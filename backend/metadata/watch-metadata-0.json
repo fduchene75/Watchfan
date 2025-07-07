@@ -1,0 +1,23 @@
+{
+  "name": "Rolex Submariner 16610",
+  "description": "Iconic Rolex dive watch (1988-2010) with 40mm steel case, aluminum bezel, and Caliber 3135 movement. Features classic black dial, Mercedes hands, and 300m water resistance. Considered the quintessential modern Submariner reference.",
+  "image": "ipfs://tobedefined",
+  "attributes": [
+    {
+      "trait_type": "Brand",
+      "value": "Rolex"
+    },
+    {
+      "trait_type": "Model", 
+      "value": "Submariner"
+    },
+    {
+      "trait_type": "Model Reference",
+      "value": "16610"
+    },
+    {
+      "trait_type": "Serial Number",
+      "value": "X812314"
+    }
+  ]
+}
