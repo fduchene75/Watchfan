@@ -47,7 +47,7 @@ describe("Watchfan NFT Contract", function () {
       expect(await watchfan.owner()).to.equal(owner.address);
 
       // Vérifie l'état initial
-      expect(await watchfan.totalSupply()).to.equal(1);
+      expect(await watchfan.totalSupply()).to.equal(0);
       expect(await watchfan.exists(0)).to.be.false;
       expect(await watchfan.exists(1)).to.be.false;
       await expect(watchfan.ownerOf(1)).to.be.revertedWithCustomError(watchfan, 'ERC721NonexistentToken');
@@ -60,14 +60,14 @@ describe("Watchfan NFT Contract", function () {
     });
     it("Should allow owner to mint for user1", async function () {
       await watchfan.mintWfNFT(addr1.address, defaultURI);
-      expect(await watchfan.totalSupply()).to.equal(2);
+      expect(await watchfan.totalSupply()).to.equal(1);
       expect(await watchfan.exists(1)).to.be.true;
       expect(await watchfan.ownerOf(1)).to.equal(addr1.address);
     });
     it("Should increment when multiple minting", async function () {
       await watchfan.mintWfNFT(addr1.address, defaultURI);
       await watchfan.mintWfNFT(addr2.address, defaultURI);
-      expect(await watchfan.totalSupply()).to.equal(3);
+      expect(await watchfan.totalSupply()).to.equal(2);
       expect(await watchfan.exists(1)).to.be.true;
       expect(await watchfan.exists(2)).to.be.true;
       expect(await watchfan.ownerOf(1)).to.equal(addr1.address);
@@ -179,7 +179,7 @@ describe("Watchfan NFT Contract", function () {
         .to.emit(watchfan, "WatchfanMintedTo")
         .withArgs(addr2.address, 1);
       
-      expect(await watchfan.totalSupply()).to.equal(2);
+      expect(await watchfan.totalSupply()).to.equal(1);
       expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
     });
 
@@ -188,7 +188,7 @@ describe("Watchfan NFT Contract", function () {
         .to.emit(watchfan, "WatchfanMintedTo")
         .withArgs(addr2.address, 1);
       
-      expect(await watchfan.totalSupply()).to.equal(2);
+      expect(await watchfan.totalSupply()).to.equal(1);
       expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
     });
 
@@ -215,7 +215,7 @@ describe("Watchfan NFT Contract", function () {
       await watchfan.connect(addr1).mintWfNFT(addr3.address, defaultURI); // tokenId 1
       await watchfan.connect(addr2).mintWfNFT(addr3.address, defaultURI); // tokenId 2
       
-      expect(await watchfan.totalSupply()).to.equal(3);
+      expect(await watchfan.totalSupply()).to.equal(2);
       expect(await watchfan.ownerOf(1)).to.equal(addr3.address);
       expect(await watchfan.ownerOf(2)).to.equal(addr3.address);
     });

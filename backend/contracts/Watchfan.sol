@@ -272,7 +272,7 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
 
     // Fonction pour obtenir le nombre total de tokens mintés
     function totalSupply() public view returns (uint256) {
-        return _nextTokenId;
+        return _nextTokenId - 1; // Soustraire 1 car _nextTokenId commence à 1
     }
     
     // Fonction pour vérifier si un token existe
