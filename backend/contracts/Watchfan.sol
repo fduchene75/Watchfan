@@ -4,45 +4,41 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract Watchfan is ERC721, Ownable, ERC721URIStorage {
+contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
 
     // ERRORS
-    error WatchfanInvalidRecipient(address recipient);
-    error WatchfanTransferNotFound(uint256 tokenId);
-    error WatchfanTransferAlreadyExists(uint256 tokenId);
-    error WatchfanNotOwner(uint256 tokenId);
-    error WatchfanNotRecipient(uint256 tokenId);
-    error WatchfanAlreadyApproved(uint256 tokenId);
-    error WatchfanDirectTransferDisabled(uint256 tokenId);
-    error WatchfanUnauthorizedCancellation(uint256 tokenId);
+    error WatchfanInvalidAddress(address addr);
+    error WatchfanTransferNotFound(uint32 tokenId);
+    error WatchfanTransferAlreadyExists(uint32 tokenId);
+    error WatchfanNotOwner(uint32 tokenId);
+    error WatchfanNotRecipient(uint32 tokenId);
+    error WatchfanAlreadyApproved(uint32 tokenId);
+    error WatchfanDirectTransferDisabled(uint32 tokenId);
+    error WatchfanUnauthorizedCancellation(uint32 tokenId);
     // Erreurs pour la gestion des boutiques
-    error WatchfanInvalidShopAddress(address shop);
     error WatchfanShopAlreadyAuthorized(address shop);
     error WatchfanShopNotAuthorized(address shop);
     error WatchfanUnauthorizedMinting(address sender);
     // Erreurs pour les numéros de série
     error WatchfanInvalidSerialHash(bytes32 serialHash);
     error WatchfanSerialHashAlreadyExists(bytes32 serialHash);
-    error WatchfanSerialNumberAlreadySet(uint256 tokenId);
-    error WatchfanSerialNumberNotSet(uint256 tokenId);
 
     // EVENTS
     // Événement émis lors de la création d'un NFT
-    event WatchfanMintedTo(address indexed recipient, uint256 tokenId);
+    event WatchfanMintedTo(address indexed recipient, uint32 tokenId);
     // Événement émis lors du transfert d'un NFT
-    event WatchfanTransferred(address indexed from, address indexed to, uint256 tokenId);
+    event WatchfanTransferred(address indexed from, address indexed to, uint32 tokenId);
     // Evénements pour la double validation
-    event TransferRequested(uint256 indexed tokenId, address indexed from, address indexed to);
-    event TransferApprovedByOwner(uint256 indexed tokenId, address indexed owner);
-    event TransferApprovedByRecipient(uint256 indexed tokenId, address indexed recipient);
-    event TransferExecuted(uint256 indexed tokenId, address indexed from, address indexed to);
-    event TransferCancelled(uint256 indexed tokenId, address indexed from, address indexed to); 
+    event TransferRequested(uint32 indexed tokenId, address indexed from, address indexed to);
+    event TransferApprovedByOwner(uint32 indexed tokenId, address indexed owner);
+    event TransferApprovedByRecipient(uint32 indexed tokenId, address indexed recipient);
+    event TransferExecuted(uint32 indexed tokenId, address indexed from, address indexed to);
+    event TransferCancelled(uint32 indexed tokenId, address indexed from, address indexed to); 
     // Événements pour la gestion des boutiques
     event ShopAuthorized(address indexed shop, address indexed authorizedBy);
     event ShopRevoked(address indexed shop, address indexed revokedBy);       
-    // Événements pour les numéros de série
-    event SerialNumberSet(uint256 indexed tokenId, bytes32 indexed serialHash);
 
     // TYPES
     // Structure pour stocker les transferts en attente
@@ -51,36 +47,48 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
         address to;
         bool ownerApproved;
         bool recipientApproved;
-        uint256 timestamp;
+        uint64 timestamp;
+    }
+    // Structure pour stocker les métadonnées principales des tokens (les autres sont dans IPFS)
+    struct TokenMetadata {
+        uint64 purchaseDate;
+        address originalShop;
+    }
+    // Structure pour enregistrer les transferts effectués (pour l'historique)
+    struct TransferRecord {
+        address from;
+        address to;
+        uint64 timestamp;
     }
 
     // STATE VARIABLES
-    uint256 private _nextTokenId = 1; // Au lieu de 0 par défaut (pour éviter les confusions avec le token 0)
+    uint32 private _nextTokenId = 1; // Au lieu de 0 par défaut (pour éviter les confusions avec le token 0)
     mapping(uint256 => PendingTransfer) public pendingTransfers; // Mapping pour les transferts en attente
     // Gestion des boutiques autorisées
     mapping(address => bool) public authorizedShops;
     address[] public shopAddresses;
     // Gestion des numéros de série hashés
     mapping(uint256 => bytes32) private _tokenSerialHashes; // tokenId => hash du numéro de série
-    mapping(bytes32 => uint256) private _serialHashToToken; // hash => tokenId
-    mapping(uint256 => bool) private _serialNumberSet; // tokenId => bool
+    mapping(bytes32 => uint32) private _serialHashToToken; // hash => tokenId
+    // Mapping pour les métadonnées et l'historique des transferts
+    mapping(uint256 => TokenMetadata) private _tokenMetadata;
+    mapping(uint256 => TransferRecord[]) private _transferHistory;
 
     // CONSTRUCTOR
     constructor(address initialOwner) ERC721("Watchfan NFT Collection", "WFC") Ownable(initialOwner) {}
 
     // MODIFIERS
-    // not used yet
+    modifier validAddress(address addr) {
+        require(addr != address(0), WatchfanInvalidAddress(addr));
+        require(addr.code.length == 0, WatchfanInvalidAddress(addr));
+        _;
+    }
 
     // FUNCTIONS
     //
 
     // Fonction pour autoriser une boutique à minter
-    function setShopAddress(address shop, bool authorized) public onlyOwner {
-        // Vérifier que l'adresse est valide
-        require(shop != address(0), WatchfanInvalidShopAddress(shop));
-        
-        // Vérifier que l'adresse n'est pas un contrat
-        require(shop.code.length == 0, WatchfanInvalidShopAddress(shop));
+    function setShopAddress(address shop, bool authorized) public onlyOwner validAddress(shop) {
         
         // Si on autorise la boutique
         if (authorized) {
@@ -126,55 +134,35 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
 
     // Fonction pour obtenir la liste des boutiques autorisées
     function getAuthorizedShops() public view returns (address[] memory) {
-        // Filtrer les boutiques encore actives
-        uint256 activeCount = 0;
-        for (uint256 i = 0; i < shopAddresses.length; i++) {
-            if (authorizedShops[shopAddresses[i]]) {
-                activeCount++;
+        uint256 length = shopAddresses.length;
+        address[] memory temp = new address[](length);
+        uint256 count = 0;
+        
+        for (uint256 i = 0; i < length; ++i) {
+            address shop = shopAddresses[i];
+            if (authorizedShops[shop]) {
+                temp[count] = shop;
+                ++count;
             }
         }
         
-        address[] memory activeShops = new address[](activeCount);
-        uint256 currentIndex = 0;
-        
-        for (uint256 i = 0; i < shopAddresses.length; i++) {
-            if (authorizedShops[shopAddresses[i]]) {
-                activeShops[currentIndex] = shopAddresses[i];
-                currentIndex++;
-            }
+        // Redimensionner le tableau pour réduire le coût en gas car il peut contenir des adresses vides
+        assembly {
+            mstore(temp, count)
         }
         
-        return activeShops;
+        return temp;
     }
 
-    // Fonction pour mint un NFT : seul le propriétaire du contrat ou une boutique peut mint
-    function mintWfNFT (address recipient, string memory uri) public {
+    // Fonction pour mint un NFT : seule une boutique peut mint
+    function mintWfNFT(address recipient, string memory uri, bytes32 serialHash) public validAddress(recipient) nonReentrant {
         // Vérifier que l'appelant est autorisé
-        if (msg.sender != owner()) {
-            require(authorizedShops[msg.sender], WatchfanUnauthorizedMinting(msg.sender));
-        }        
-        require(recipient != address(0), WatchfanInvalidRecipient(recipient)); // pas d'adresse zéro
-        require(recipient.code.length == 0, WatchfanInvalidRecipient(recipient)); // pas de contrat, seulement des EOA
-        uint256 tokenId = _nextTokenId;
-        _nextTokenId++;
-        _safeMint(recipient, tokenId);
-        _setTokenURI(tokenId, uri);
-        emit WatchfanMintedTo(recipient, tokenId);
-    }
-
-    // Mint avec hash de numéro de série
-    function mintWfNFTWithSerialHash(address recipient, string memory uri, bytes32 serialHash) public {
-        // Vérifier que l'appelant est autorisé
-        if (msg.sender != owner()) {
-            require(authorizedShops[msg.sender], WatchfanUnauthorizedMinting(msg.sender));
-        }
+        require(authorizedShops[msg.sender], WatchfanUnauthorizedMinting(msg.sender));
         
-        require(recipient != address(0), WatchfanInvalidRecipient(recipient));
-        require(recipient.code.length == 0, WatchfanInvalidRecipient(recipient));
         require(serialHash != bytes32(0), WatchfanInvalidSerialHash(serialHash));
         require(!serialHashExists(serialHash), WatchfanSerialHashAlreadyExists(serialHash));
         
-        uint256 tokenId = _nextTokenId;
+        uint32 tokenId = _nextTokenId;
         _nextTokenId++;
         
         _safeMint(recipient, tokenId);
@@ -183,64 +171,44 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
         // Associer le hash immédiatement
         _tokenSerialHashes[tokenId] = serialHash;
         _serialHashToToken[serialHash] = tokenId;
-        _serialNumberSet[tokenId] = true;
-        
-        emit WatchfanMintedTo(recipient, tokenId);
-        emit SerialNumberSet(tokenId, serialHash);
-    }
 
-    // Fonction pour associer un hash de numéro de série à un NFT
-    function setSerialNumberHash(uint256 tokenId, bytes32 serialHash) public onlyOwner {
-        // Vérifier que le token existe
-        require(exists(tokenId), WatchfanTransferNotFound(tokenId));
+        // Stocker les principales métadonnées on-chain
+        _tokenMetadata[tokenId] = TokenMetadata({
+            purchaseDate: uint64(block.timestamp),
+            originalShop: msg.sender
+        });
         
-        // Vérifier que le hash est valide (non-zéro)
-        require(serialHash != bytes32(0), WatchfanInvalidSerialHash(serialHash));
-        
-        // Vérifier que le token n'a pas déjà un numéro de série
-        require(!_serialNumberSet[tokenId], WatchfanSerialNumberAlreadySet(tokenId));
-        
-        // Vérifier que ce hash n'est pas déjà utilisé
-        require(_serialHashToToken[serialHash] == 0, WatchfanSerialHashAlreadyExists(serialHash));
-        
-        // Stocker les associations
-        _tokenSerialHashes[tokenId] = serialHash;
-        _serialHashToToken[serialHash] = tokenId;
-        _serialNumberSet[tokenId] = true;
-        
-        emit SerialNumberSet(tokenId, serialHash);
+        // Initialiser l'historique avec le premier "transfert" (mint)
+        _transferHistory[tokenId].push(TransferRecord({
+            from: address(0),
+            to: recipient,
+            timestamp: uint64(block.timestamp)
+        }));
+
+        emit WatchfanMintedTo(recipient, tokenId);
     }
 
     // Fonction pour retrouver un token via le hash de son numéro de série
     function getTokenBySerialHash(bytes32 serialHash) public view returns (uint256) {
         require(serialHash != bytes32(0), WatchfanInvalidSerialHash(serialHash));
         
-        uint256 tokenId = _serialHashToToken[serialHash];
+        uint32 tokenId = _serialHashToToken[serialHash];
         
         // Vérifier que le token existe
-        require(tokenId != 0, WatchfanSerialNumberNotSet(0));
+        require(tokenId != 0, WatchfanInvalidSerialHash(serialHash));
         
         return tokenId;
     }
 
-    // Fonction pour vérifier si un token a un numéro de série
-    function hasSerialNumber(uint256 tokenId) public view returns (bool) {
-        return _serialNumberSet[tokenId];
-    }
-
     // Fonction pour vérifier un hash de numéro de série
-    function verifySerialNumberHash(uint256 tokenId, bytes32 serialHash) public view returns (bool) {
+    function verifySerialNumberHash(uint32 tokenId, bytes32 serialHash) public view returns (bool) {
         require(exists(tokenId), WatchfanTransferNotFound(tokenId));
-        require(_serialNumberSet[tokenId], WatchfanSerialNumberNotSet(tokenId));
-        
         return _tokenSerialHashes[tokenId] == serialHash;
     }
 
     // Fonction pour obtenir le hash du numéro de série
-    function getSerialNumberHash(uint256 tokenId) public view returns (bytes32) {
+    function getSerialNumberHash(uint32 tokenId) public view returns (bytes32) {
         require(exists(tokenId), WatchfanTransferNotFound(tokenId));
-        require(_serialNumberSet[tokenId], WatchfanSerialNumberNotSet(tokenId));
-        
         return _tokenSerialHashes[tokenId];
     }
 
@@ -248,6 +216,50 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
     function serialHashExists(bytes32 serialHash) public view returns (bool) {
         if (serialHash == bytes32(0)) return false;
         return _serialHashToToken[serialHash] != 0;
+    }
+
+    // Liste des NFTs d'un utilisateur
+    function getTokensByOwner(address owner) external view returns (uint256[] memory) {
+        require(owner != address(0), "Invalid owner address");
+        
+        uint256 balance = balanceOf(owner);
+        uint256[] memory tokens = new uint256[](balance);
+        uint256 currentIndex = 0;
+        
+        // Parcourir tous les tokens mintés
+        for (uint32 tokenId = 1; tokenId < _nextTokenId && currentIndex < balance; tokenId++) {
+            if (_ownerOf(tokenId) == owner) {
+                tokens[currentIndex] = tokenId;
+                currentIndex++;
+            }
+        }
+        
+        return tokens;
+    }
+
+    // Fonction pour obtenir les métadonnées d'un token
+    function getTokenMetadata(uint32 tokenId) external view returns (
+        string memory uri,
+        uint64 purchaseDate,
+        address originalShop,
+        bytes32 serialHash
+    ) {
+        require(exists(tokenId), WatchfanTransferNotFound(tokenId));
+        
+        TokenMetadata memory metadata = _tokenMetadata[tokenId];
+        
+        return (
+            tokenURI(uint256(tokenId)),           // URI IPFS
+            metadata.purchaseDate,       // Timestamp du mint
+            metadata.originalShop,       // Boutique qui a minté
+            getSerialNumberHash(tokenId) // Hash du numéro de série
+        );
+    }
+
+    // Fonction pour obtenir l'historique des transferts d'un token
+    function getTransferHistory(uint32 tokenId) external view returns (TransferRecord[] memory) {
+        require(exists(tokenId), WatchfanTransferNotFound(tokenId));
+        return _transferHistory[tokenId];
     }
 
     // Override pour résoudre l'ambiguïté entre ERC721 et ERC721URIStorage
@@ -276,12 +288,12 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
     }
     
     // Fonction pour vérifier si un token existe
-    function exists(uint256 tokenId) public view returns (bool) {
+    function exists(uint32 tokenId) public view returns (bool) {
         return _ownerOf(tokenId) != address(0);
     }
     
     // Fonction pour demander un transfert (seul le propriétaire du token peut l'initier)
-    function requestTransfer(uint256 tokenId, address to) public {
+    function requestTransfer(uint32 tokenId, address to) public validAddress(to) {
         // Vérifier que le token existe
         require(exists(tokenId), WatchfanTransferNotFound(tokenId));
         
@@ -291,10 +303,8 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
         // Vérifier qu'il n'y a pas déjà une demande en cours
         require(pendingTransfers[tokenId].from == address(0), WatchfanTransferAlreadyExists(tokenId));
         
-        // Vérifier que le destinataire est valide
-        require(to != address(0), WatchfanInvalidRecipient(to));
-        require(to.code.length == 0, WatchfanInvalidRecipient(to)); // EOA seulement
-        require(to != msg.sender, WatchfanInvalidRecipient(to)); // Pas de transfert à soi-même
+        // Pas de transfert à soi-même
+        require(to != msg.sender, WatchfanInvalidAddress(to)); 
         
         // Créer la demande de transfert
         pendingTransfers[tokenId] = PendingTransfer({
@@ -302,7 +312,7 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
             to: to,
             ownerApproved: true, // Le propriétaire approuve automatiquement en créant la demande
             recipientApproved: false,
-            timestamp: block.timestamp
+            timestamp: uint64(block.timestamp)
         });
         
         emit TransferRequested(tokenId, msg.sender, to);
@@ -310,7 +320,7 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
     }
 
     // Fonction pour que le destinataire accepte le transfert
-    function approveReceive(uint256 tokenId) public {
+    function approveReceive(uint32 tokenId) public nonReentrant {
         PendingTransfer storage transfer = pendingTransfers[tokenId];
         
         // Vérifier qu'une demande existe
@@ -329,12 +339,12 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
         
         // Si les deux parties ont approuvé, exécuter le transfert automatiquement
         if (transfer.ownerApproved && transfer.recipientApproved) {
-            _executeTransfer(tokenId);
+            _executeTransfer(uint256(tokenId));
         }
     }
     
     // Fonction pour annuler une demande de transfert (propriétaire OU destinataire peuvent annuler)
-    function cancelTransfer(uint256 tokenId) public {
+    function cancelTransfer(uint32 tokenId) public {
         PendingTransfer storage transfer = pendingTransfers[tokenId];
         
         // Vérifier qu'une demande existe
@@ -361,9 +371,18 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
         address from = transfer.from;
         address to = transfer.to;
         
+        uint32 tokenId32 = uint32(tokenId);
+
         // Vérifier que le propriétaire actuel est toujours le même
-        require(ownerOf(tokenId) == from, WatchfanNotOwner(tokenId));
+        require(ownerOf(tokenId) == from, WatchfanNotOwner(tokenId32));
         
+        // Enregistrer dans l'historique AVANT le transfert
+        _transferHistory[tokenId].push(TransferRecord({
+            from: from,
+            to: to,
+            timestamp: uint64(block.timestamp)
+        }));
+
         // Effectuer le transfert AVANT de supprimer la demande
         // pour que _update() puisse encore vérifier les permissions
         _transfer(from, to, tokenId);
@@ -371,35 +390,17 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
         // Supprimer la demande de transfert APRÈS le transfert
         delete pendingTransfers[tokenId];
         
-        emit TransferExecuted(tokenId, from, to);
-        emit WatchfanTransferred(from, to, tokenId);
-    }
-    
-    // Fonction publique pour exécuter manuellement un transfert approuvé
-    function executeTransfer(uint256 tokenId) public {
-        PendingTransfer storage transfer = pendingTransfers[tokenId];
-        
-        // Vérifier qu'une demande existe
-        require(transfer.from != address(0), WatchfanTransferNotFound(tokenId));
-        
-        // Vérifier que les deux parties ont approuvé
-        require(transfer.ownerApproved && transfer.recipientApproved, "Transfer not fully approved");
-        
-        _executeTransfer(tokenId);
+        emit TransferExecuted(tokenId32, from, to);
+        emit WatchfanTransferred(from, to, tokenId32);
     }
 
     // Override pour bloquer les transferts directs et forcer la double validation
-    // Méthode recommandée : utiliser le hook _update pour contrôler tous les transferts
+    // On utilise le hook _update pour contrôler tous les transferts
     function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
         address from = _ownerOf(tokenId);
         
         // Permettre les mint (from == address(0))
         if (from == address(0)) {
-            return super._update(to, tokenId, auth);
-        }
-        
-        // Permettre les transferts par le propriétaire du contrat
-        if (_msgSender() == owner()) {
             return super._update(to, tokenId, auth);
         }
         
@@ -414,26 +415,16 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage {
         }
         
         // Bloquer tous les autres transferts directs
-        revert WatchfanDirectTransferDisabled(tokenId);
-    }
-    
-    // Fonction d'urgence pour le propriétaire du contrat
-    function emergencyTransfer(address from, address to, uint256 tokenId) public onlyOwner {
-        // Nettoyer toute demande de transfert en attente
-        if (pendingTransfers[tokenId].from != address(0)) {
-            delete pendingTransfers[tokenId];
-        }
-        _transfer(from, to, tokenId);
-        emit WatchfanTransferred(from, to, tokenId);
+        revert WatchfanDirectTransferDisabled(uint32(tokenId));
     }
 
     // Fonction pour vérifier si un transfert est en attente
-    function hasPendingTransfer(uint256 tokenId) public view returns (bool) {
+    function hasPendingTransfer(uint32 tokenId) public view returns (bool) {
         return pendingTransfers[tokenId].from != address(0);
     }
     
     // Fonction pour obtenir les détails d'un transfert en attente
-    function getPendingTransfer(uint256 tokenId) public view returns (
+    function getPendingTransfer(uint32 tokenId) public view returns (
         address from,
         address to,
         bool ownerApproved,

@@ -2,6 +2,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+const DEFAULT_URI = "ipfs://bafkreihooe6yb7hyjrluimzpeqklzdwkbvzx6fr73rvvnqh3zzuedk4aym";
 
 // Fonction utilitaire pour créer des hashs de numéros de série
 function createSerialHash(serialNumber) {
@@ -16,9 +17,16 @@ function createTestSerial(base = "TEST") {
   return { serialNumber, serialHash };
 }
 
+// Helper pour faciliter le minting avec un numéro de série
+async function mintToAddress(contract, recipient, uri = DEFAULT_URI) {
+  const { serialHash } = createTestSerial();
+  await contract.mintWfNFT(recipient, uri, serialHash);
+  return serialHash;
+}
+
 describe("Watchfan NFT Contract", function () {
   // Variables partagées pour tous les tests
-  let watchfan, owner, addr1, addr2, addr3, defaultURI;
+  let watchfan, owner, addr1, addr2, addr3;
 
   // Fixture : déploie le contrat une fois et le réutilise pour chaque test
   async function deployWatchfanFixture() {
@@ -27,15 +35,13 @@ describe("Watchfan NFT Contract", function () {
     // Déploie le contrat avec l'owner
     const Watchfan = await ethers.getContractFactory("Watchfan");
     const watchfan = await Watchfan.deploy(owner.address);
-    // URI par défaut pour les tests
-    const defaultURI = "ipfs://bafkreihooe6yb7hyjrluimzpeqklzdwkbvzx6fr73rvvnqh3zzuedk4aym";
     // Retourne les éléments nécessaires aux tests
-    return { watchfan, owner, addr1, addr2, addr3, defaultURI };
+    return { watchfan, owner, addr1, addr2, addr3 };
   }
 
   // beforeEach : charge le fixture avant chaque test individuel
   beforeEach(async function () {
-    ({ watchfan, owner, addr1, addr2, addr3, defaultURI } = await loadFixture(deployWatchfanFixture));
+    ({ watchfan, owner, addr1, addr2, addr3 } = await loadFixture(deployWatchfanFixture));
   });
 
   describe("Déploiement et état initial", function () {
@@ -54,38 +60,24 @@ describe("Watchfan NFT Contract", function () {
     });
   });
 
-  describe("Cas simples de mint", function () {
-    it("Should reject unallowed mint", async function () {
-      await expect(watchfan.connect(addr1).mintWfNFT(addr1, defaultURI)).to.be.revertedWithCustomError(watchfan, 'WatchfanUnauthorizedMinting');
-    });
-    it("Should allow owner to mint for user1", async function () {
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
-      expect(await watchfan.totalSupply()).to.equal(1);
-      expect(await watchfan.exists(1)).to.be.true;
-      expect(await watchfan.ownerOf(1)).to.equal(addr1.address);
-    });
-    it("Should increment when multiple minting", async function () {
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
-      await watchfan.mintWfNFT(addr2.address, defaultURI);
-      expect(await watchfan.totalSupply()).to.equal(2);
-      expect(await watchfan.exists(1)).to.be.true;
-      expect(await watchfan.exists(2)).to.be.true;
-      expect(await watchfan.ownerOf(1)).to.equal(addr1.address);
-      expect(await watchfan.ownerOf(2)).to.equal(addr2.address);
-    });
-    it("Should emit an event after minting", async function () {
-      await expect(watchfan.mintWfNFT(addr1.address, defaultURI))
-      .to.emit(watchfan, "WatchfanMintedTo")
-      .withArgs(addr1.address, 1);
-    });
-  });
-
   describe("Contrôle de l'adresse destinataire", function () {
+
+    beforeEach(async function () {
+      // Autoriser addr1 comme boutique pour les tests
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+    });
+
     it("Should reject zero address", async function () {
-      await expect(watchfan.mintWfNFT(ethers.ZeroAddress, defaultURI)).to.be.revertedWithCustomError(watchfan, 'WatchfanInvalidRecipient');
+      const { serialHash } = createTestSerial();
+      await expect(
+        watchfan.connect(addr1).mintWfNFT(ethers.ZeroAddress, DEFAULT_URI, serialHash)
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
     });
     it("Should reject a contract address", async function () {
-      await expect(watchfan.mintWfNFT(await watchfan.getAddress(), defaultURI)).to.be.revertedWithCustomError(watchfan, 'WatchfanInvalidRecipient');
+      const { serialHash: serialHash2 } = createTestSerial();
+      await expect(
+        watchfan.connect(addr1).mintWfNFT(await watchfan.getAddress(), DEFAULT_URI, serialHash2)
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
     });    
   });
 
@@ -120,12 +112,12 @@ describe("Watchfan NFT Contract", function () {
       // Adresse zéro
       await expect(
         watchfan.connect(owner).setShopAddress(ethers.ZeroAddress, true)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidShopAddress");
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
 
       // Adresse de contrat
       await expect(
         watchfan.connect(owner).setShopAddress(await watchfan.getAddress(), true)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidShopAddress");
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
     });
 
     it("Should reject duplicate authorization", async function () {
@@ -175,26 +167,16 @@ describe("Watchfan NFT Contract", function () {
     });
 
     it("Should allow authorized shop to mint", async function () {
-      await expect(watchfan.connect(addr1).mintWfNFT(addr2.address, defaultURI))
-        .to.emit(watchfan, "WatchfanMintedTo")
-        .withArgs(addr2.address, 1);
+      const serialHash = await mintToAddress(watchfan.connect(addr1), addr2.address);
       
       expect(await watchfan.totalSupply()).to.equal(1);
       expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
-    });
-
-    it("Should still allow owner to mint", async function () {
-      await expect(watchfan.connect(owner).mintWfNFT(addr2.address, defaultURI))
-        .to.emit(watchfan, "WatchfanMintedTo")
-        .withArgs(addr2.address, 1);
-      
-      expect(await watchfan.totalSupply()).to.equal(1);
-      expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
+      expect(await watchfan.getTokenBySerialHash(serialHash)).to.equal(1);
     });
 
     it("Should reject minting from unauthorized address", async function () {
       await expect(
-        watchfan.connect(addr2).mintWfNFT(addr3.address, defaultURI)
+        mintToAddress(watchfan.connect(addr2),addr3.address)
       ).to.be.revertedWithCustomError(watchfan, "WatchfanUnauthorizedMinting");
     });
 
@@ -203,7 +185,7 @@ describe("Watchfan NFT Contract", function () {
       await watchfan.connect(owner).setShopAddress(addr1.address, false);
       
       await expect(
-        watchfan.connect(addr1).mintWfNFT(addr2.address, defaultURI)
+        mintToAddress(watchfan.connect(addr1),addr2.address)
       ).to.be.revertedWithCustomError(watchfan, "WatchfanUnauthorizedMinting");
     });
 
@@ -212,8 +194,8 @@ describe("Watchfan NFT Contract", function () {
       await watchfan.connect(owner).setShopAddress(addr2.address, true);
       
       // Les deux boutiques peuvent minter
-      await watchfan.connect(addr1).mintWfNFT(addr3.address, defaultURI); // tokenId 1
-      await watchfan.connect(addr2).mintWfNFT(addr3.address, defaultURI); // tokenId 2
+      await mintToAddress(watchfan.connect(addr1),addr3.address); // tokenId 1
+      await mintToAddress(watchfan.connect(addr2),addr3.address); // tokenId 2
       
       expect(await watchfan.totalSupply()).to.equal(2);
       expect(await watchfan.ownerOf(1)).to.equal(addr3.address);
@@ -223,13 +205,13 @@ describe("Watchfan NFT Contract", function () {
     it("Should maintain same validation rules for shop minting", async function () {
       // Adresse zéro
       await expect(
-        watchfan.connect(addr1).mintWfNFT(ethers.ZeroAddress, defaultURI)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidRecipient");
+        mintToAddress(watchfan.connect(addr1),ethers.ZeroAddress)
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
 
       // Adresse de contrat
       await expect(
-        watchfan.connect(addr1).mintWfNFT(await watchfan.getAddress(), defaultURI)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidRecipient");
+        mintToAddress(watchfan.connect(addr1),await watchfan.getAddress())
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
     });
   });
 
@@ -237,21 +219,13 @@ describe("Watchfan NFT Contract", function () {
     beforeEach(async function () {
       // Autoriser addr1 comme boutique et minter un NFT
       await watchfan.connect(owner).setShopAddress(addr1.address, true);
-      await watchfan.connect(addr1).mintWfNFT(addr2.address, defaultURI);
+      await mintToAddress(watchfan.connect(addr1),addr2.address);
     });
 
     it("Should allow normal transfer workflow after shop minting", async function () {
       // Vérifier que le NFT minté par la boutique peut être transféré normalement
       await watchfan.connect(addr2).requestTransfer(1, addr3.address);
       await watchfan.connect(addr3).approveReceive(1);
-      
-      expect(await watchfan.ownerOf(1)).to.equal(addr3.address);
-    });
-
-    it("Should allow owner emergency transfer on shop-minted NFT", async function () {
-      await expect(
-        watchfan.connect(owner).emergencyTransfer(addr2.address, addr3.address, 1)
-      ).to.emit(watchfan, "WatchfanTransferred");
       
       expect(await watchfan.ownerOf(1)).to.equal(addr3.address);
     });
@@ -263,19 +237,13 @@ describe("Watchfan NFT Contract", function () {
       ).to.be.revertedWithCustomError(watchfan, "WatchfanDirectTransferDisabled");
     });
 
-    it("Should block shop from making unauthorized transfers", async function () {
-      // Une boutique ne peut pas faire de transferts d'urgence
-      await expect(
-        watchfan.connect(addr1).emergencyTransfer(addr2.address, addr3.address, 1)
-      ).to.be.revertedWithCustomError(watchfan, "OwnableUnauthorizedAccount");
-    });
   });
 
   describe("Cas limites et edge cases pour boutiques", function () {
     it("Should handle shop authorization state changes correctly", async function () {
       // Autoriser, minter, puis révoquer
       await watchfan.connect(owner).setShopAddress(addr1.address, true);
-      await watchfan.connect(addr1).mintWfNFT(addr2.address, defaultURI);
+      await mintToAddress(watchfan.connect(addr1),addr2.address);
       await watchfan.connect(owner).setShopAddress(addr1.address, false);
       
       // L'ancien NFT existe toujours
@@ -283,7 +251,7 @@ describe("Watchfan NFT Contract", function () {
       
       // Mais la boutique ne peut plus minter
       await expect(
-        watchfan.connect(addr1).mintWfNFT(addr2.address, defaultURI)
+        mintToAddress(watchfan.connect(addr1),addr2.address)
       ).to.be.revertedWithCustomError(watchfan, "WatchfanUnauthorizedMinting");
     });
 
@@ -307,168 +275,7 @@ describe("Watchfan NFT Contract", function () {
 
   });
 
-  describe("Gestion des numéros de série (setSerialNumberHash)", function () {
-    let serialHash, serialNumber;
-
-    beforeEach(async function () {
-      // Créer un hash de test cohérent
-      serialNumber = "ROLEX-123456";
-      serialHash = ethers.keccak256(ethers.toUtf8Bytes(serialNumber));
-      
-      // Mint un NFT pour les tests
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
-    });
-
-    it("Should allow owner to set serial number hash", async function () {
-      await expect(watchfan.connect(owner).setSerialNumberHash(1, serialHash))
-        .to.emit(watchfan, "SerialNumberSet")
-        .withArgs(1, serialHash);
-      
-      expect(await watchfan.hasSerialNumber(1)).to.be.true;
-      expect(await watchfan.getSerialNumberHash(1)).to.equal(serialHash);
-    });
-
-    it("Should reject setting serial hash from non-owner", async function () {
-      await expect(
-        watchfan.connect(addr1).setSerialNumberHash(1, serialHash)
-      ).to.be.revertedWithCustomError(watchfan, "OwnableUnauthorizedAccount");
-    });
-
-    it("Should reject invalid serial hash", async function () {
-      const zeroHash = ethers.ZeroHash;
-      
-      await expect(
-        watchfan.connect(owner).setSerialNumberHash(1, zeroHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidSerialHash");
-    });
-
-    it("Should reject setting serial for non-existent token", async function () {
-      await expect(
-        watchfan.connect(owner).setSerialNumberHash(999, serialHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanTransferNotFound");
-    });
-
-    it("Should reject duplicate serial hash assignment", async function () {
-      // Assigner le hash au premier token
-      await watchfan.connect(owner).setSerialNumberHash(1, serialHash);
-      
-      // Mint un deuxième token
-      await watchfan.mintWfNFT(addr2.address, defaultURI);
-      
-      // Tenter d'assigner le même hash
-      await expect(
-        watchfan.connect(owner).setSerialNumberHash(2, serialHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanSerialHashAlreadyExists");
-    });
-
-    it("Should reject setting serial twice for same token", async function () {
-      await watchfan.connect(owner).setSerialNumberHash(1, serialHash);
-      
-      const newSerialHash = ethers.keccak256(ethers.toUtf8Bytes("OMEGA-789"));
-      
-      await expect(
-        watchfan.connect(owner).setSerialNumberHash(1, newSerialHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanSerialNumberAlreadySet");
-    });
-  });
-
-  describe("Recherche par hash de numéro de série (getTokenBySerialHash)", function () {
-    let serialHash1, serialHash2, serialNumber1, serialNumber2;
-
-    beforeEach(async function () {
-      serialNumber1 = "ROLEX-123456";
-      serialNumber2 = "OMEGA-789012";
-      serialHash1 = ethers.keccak256(ethers.toUtf8Bytes(serialNumber1));
-      serialHash2 = ethers.keccak256(ethers.toUtf8Bytes(serialNumber2));
-      
-      // Mint et assigner des numéros de série
-      await watchfan.mintWfNFT(addr1.address, defaultURI); // tokenId 1
-      await watchfan.mintWfNFT(addr2.address, defaultURI); // tokenId 2
-      await watchfan.connect(owner).setSerialNumberHash(1, serialHash1);
-      await watchfan.connect(owner).setSerialNumberHash(2, serialHash2);
-    });
-
-    it("Should find correct token by serial hash", async function () {
-      expect(await watchfan.getTokenBySerialHash(serialHash1)).to.equal(1);
-      expect(await watchfan.getTokenBySerialHash(serialHash2)).to.equal(2);
-    });
-
-    it("Should reject search with invalid hash", async function () {
-      const zeroHash = ethers.ZeroHash;
-      
-      await expect(
-        watchfan.getTokenBySerialHash(zeroHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidSerialHash");
-    });
-
-    it("Should reject search for non-existent hash", async function () {
-      const unknownHash = ethers.keccak256(ethers.toUtf8Bytes("UNKNOWN-999"));
-      
-      await expect(
-        watchfan.getTokenBySerialHash(unknownHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanSerialNumberNotSet");
-    });
-
-    it("Should handle multiple tokens correctly", async function () {
-      // Mint un nouveau NFT qui sera tokenId 3
-      await watchfan.mintWfNFT(addr3.address, defaultURI);
-      
-      // Les anciens tokens devraient toujours être trouvables
-      expect(await watchfan.getTokenBySerialHash(serialHash1)).to.equal(1);
-      expect(await watchfan.getTokenBySerialHash(serialHash2)).to.equal(2);
-    });
-  });
-
-  describe("Fonctions utilitaires de numéro de série", function () {
-    let serialHash, serialNumber;
-
-    beforeEach(async function () {
-      serialNumber = "PATEK-456789";
-      serialHash = ethers.keccak256(ethers.toUtf8Bytes(serialNumber));
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
-    });
-
-    it("Should correctly report serial number status", async function () {
-      // Avant d'assigner
-      expect(await watchfan.hasSerialNumber(1)).to.be.false;
-      expect(await watchfan.serialHashExists(serialHash)).to.be.false;
-      
-      // Après assignation
-      await watchfan.connect(owner).setSerialNumberHash(1, serialHash);
-      expect(await watchfan.hasSerialNumber(1)).to.be.true;
-      expect(await watchfan.serialHashExists(serialHash)).to.be.true;
-    });
-
-    it("Should verify serial number hash correctly", async function () {
-      await watchfan.connect(owner).setSerialNumberHash(1, serialHash);
-      
-      // Hash correct
-      expect(await watchfan.verifySerialNumberHash(1, serialHash)).to.be.true;
-      
-      // Hash incorrect
-      const wrongHash = ethers.keccak256(ethers.toUtf8Bytes("WRONG-SERIAL"));
-      expect(await watchfan.verifySerialNumberHash(1, wrongHash)).to.be.false;
-    });
-
-    it("Should reject operations on tokens without serial", async function () {
-      // getSerialNumberHash sans numéro de série
-      await expect(
-        watchfan.getSerialNumberHash(1)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanSerialNumberNotSet");
-      
-      // verifySerialNumberHash sans numéro de série
-      await expect(
-        watchfan.verifySerialNumberHash(1, serialHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanSerialNumberNotSet");
-    });
-
-    it("Should handle zero hash in serialHashExists", async function () {
-      const zeroHash = ethers.ZeroHash;
-      expect(await watchfan.serialHashExists(zeroHash)).to.be.false;
-    });
-  });
-
-  describe("Mint avec numéro de série (mintWfNFTWithSerialHash)", function () {
+  describe("Mint avec numéro de série (mintWfNFT)", function () {
     let serialHash, serialNumber;
 
     beforeEach(async function () {
@@ -479,43 +286,34 @@ describe("Watchfan NFT Contract", function () {
       await watchfan.connect(owner).setShopAddress(addr1.address, true);
     });
 
-    it("Should mint with serial hash in one transaction", async function () {
+    it("Should reject minting from owner if not authorized shop", async function () {
       await expect(
-        watchfan.connect(owner).mintWfNFTWithSerialHash(addr2.address, defaultURI, serialHash)
-      )
-        .to.emit(watchfan, "WatchfanMintedTo")
-        .withArgs(addr2.address, 1)
-        .and.to.emit(watchfan, "SerialNumberSet")
-        .withArgs(1, serialHash);
-      
-      expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
-      expect(await watchfan.hasSerialNumber(1)).to.be.true;
-      expect(await watchfan.getTokenBySerialHash(serialHash)).to.equal(1);
+        watchfan.connect(owner).mintWfNFT(addr2.address, DEFAULT_URI, serialHash)
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanUnauthorizedMinting");
     });
 
     it("Should allow authorized shop to mint with serial", async function () {
       await expect(
-        watchfan.connect(addr1).mintWfNFTWithSerialHash(addr2.address, defaultURI, serialHash)
+        watchfan.connect(addr1).mintWfNFT(addr2.address, DEFAULT_URI, serialHash)
       )
-        .to.emit(watchfan, "WatchfanMintedTo")
-        .and.to.emit(watchfan, "SerialNumberSet");
+        .to.emit(watchfan, "WatchfanMintedTo");
       
       expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
     });
 
     it("Should reject unauthorized minting with serial", async function () {
       await expect(
-        watchfan.connect(addr2).mintWfNFTWithSerialHash(addr3.address, defaultURI, serialHash)
+        watchfan.connect(addr2).mintWfNFT(addr3.address, DEFAULT_URI, serialHash)
       ).to.be.revertedWithCustomError(watchfan, "WatchfanUnauthorizedMinting");
     });
 
     it("Should reject duplicate serial hash during mint", async function () {
       // Premier mint
-      await watchfan.connect(owner).mintWfNFTWithSerialHash(addr1.address, defaultURI, serialHash);
+      await watchfan.connect(addr1).mintWfNFT(addr1.address, DEFAULT_URI, serialHash);
       
       // Deuxième mint avec le même hash
       await expect(
-        watchfan.connect(owner).mintWfNFTWithSerialHash(addr2.address, defaultURI, serialHash)
+        watchfan.connect(addr1).mintWfNFT(addr2.address, DEFAULT_URI, serialHash)
       ).to.be.revertedWithCustomError(watchfan, "WatchfanSerialHashAlreadyExists");
     });
 
@@ -524,13 +322,13 @@ describe("Watchfan NFT Contract", function () {
       
       // Hash invalide
       await expect(
-        watchfan.connect(owner).mintWfNFTWithSerialHash(addr1.address, defaultURI, zeroHash)
+        watchfan.connect(addr1).mintWfNFT(addr1.address, DEFAULT_URI, zeroHash)
       ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidSerialHash");
       
       // Adresse invalide (même validation que mint normal)
       await expect(
-        watchfan.connect(owner).mintWfNFTWithSerialHash(ethers.ZeroAddress, defaultURI, serialHash)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidRecipient");
+        watchfan.connect(addr1).mintWfNFT(ethers.ZeroAddress, DEFAULT_URI, serialHash)
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
     });
   });
 
@@ -542,7 +340,8 @@ describe("Watchfan NFT Contract", function () {
       serialHash = ethers.keccak256(ethers.toUtf8Bytes(serialNumber));
       
       // Mint avec numéro de série
-      await watchfan.connect(owner).mintWfNFTWithSerialHash(addr1.address, defaultURI, serialHash);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await watchfan.connect(addr1).mintWfNFT(addr1.address, DEFAULT_URI, serialHash);
     });
 
     it("Should maintain serial number after transfer", async function () {
@@ -552,19 +351,8 @@ describe("Watchfan NFT Contract", function () {
       
       // Le numéro de série reste attaché
       expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
-      expect(await watchfan.hasSerialNumber(1)).to.be.true;
       expect(await watchfan.getTokenBySerialHash(serialHash)).to.equal(1);
       expect(await watchfan.verifySerialNumberHash(1, serialHash)).to.be.true;
-    });
-
-    it("Should maintain serial number after emergency transfer", async function () {
-      // Transfert d'urgence
-      await watchfan.connect(owner).emergencyTransfer(addr1.address, addr3.address, 1);
-      
-      // Le numéro de série reste attaché
-      expect(await watchfan.ownerOf(1)).to.equal(addr3.address);
-      expect(await watchfan.hasSerialNumber(1)).to.be.true;
-      expect(await watchfan.getTokenBySerialHash(serialHash)).to.equal(1);
     });
 
     it("Should handle multiple tokens with different serials", async function () {
@@ -572,7 +360,7 @@ describe("Watchfan NFT Contract", function () {
       const hash2 = ethers.keccak256(ethers.toUtf8Bytes(serial2));
       
       // Mint un deuxième token
-      await watchfan.connect(owner).mintWfNFTWithSerialHash(addr2.address, defaultURI, hash2);
+      await watchfan.connect(addr1).mintWfNFT(addr2.address, DEFAULT_URI, hash2);
       
       // Vérifications croisées
       expect(await watchfan.getTokenBySerialHash(serialHash)).to.equal(1);
@@ -582,10 +370,135 @@ describe("Watchfan NFT Contract", function () {
     });
   });
   
+  describe("Fonction getTokensByOwner", function () {
+    it("Should return correct tokens for owner", async function () {
+      // Mint plusieurs NFTs pour différents propriétaires
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address); // tokenId 1
+      await mintToAddress(watchfan.connect(addr1), addr2.address); // tokenId 2
+      await mintToAddress(watchfan.connect(addr1), addr1.address); // tokenId 3
+      await mintToAddress(watchfan.connect(addr1), addr3.address); // tokenId 4
+      await mintToAddress(watchfan.connect(addr1), addr1.address); // tokenId 5
+
+      // Vérifier les tokens d'addr1
+      const addr1Tokens = await watchfan.getTokensByOwner(addr1.address);
+      expect(addr1Tokens.length).to.equal(3);
+      expect(addr1Tokens).to.include(1n);
+      expect(addr1Tokens).to.include(3n);
+      expect(addr1Tokens).to.include(5n);
+
+      // Vérifier les tokens d'addr2
+      const addr2Tokens = await watchfan.getTokensByOwner(addr2.address);
+      expect(addr2Tokens.length).to.equal(1);
+      expect(addr2Tokens[0]).to.equal(2n);
+
+      // Vérifier les tokens d'addr3
+      const addr3Tokens = await watchfan.getTokensByOwner(addr3.address);
+      expect(addr3Tokens.length).to.equal(1);
+      expect(addr3Tokens[0]).to.equal(4n);
+    });
+
+    it("Should return empty array for owner with no tokens", async function () {
+      // Mint un NFT pour addr1 seulement
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
+      
+      // addr2 n'a pas de tokens
+      const addr2Tokens = await watchfan.getTokensByOwner(addr2.address);
+      expect(addr2Tokens.length).to.equal(0);
+    });
+
+    it("Should reject invalid owner address", async function () {
+      await expect(
+        watchfan.getTokensByOwner(ethers.ZeroAddress)
+      ).to.be.revertedWith("Invalid owner address");
+    });
+
+    it("Should update correctly after transfer", async function () {
+      // Mint NFTs
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address); // tokenId 1
+      await mintToAddress(watchfan.connect(addr1), addr1.address); // tokenId 2
+      
+      // Vérifier avant transfert
+      let addr1Tokens = await watchfan.getTokensByOwner(addr1.address);
+      let addr2Tokens = await watchfan.getTokensByOwner(addr2.address);
+      expect(addr1Tokens.length).to.equal(2);
+      expect(addr2Tokens.length).to.equal(0);
+      
+      // Effectuer un transfert
+      await watchfan.connect(addr1).requestTransfer(1, addr2.address);
+      await watchfan.connect(addr2).approveReceive(1);
+      
+      // Vérifier après transfert
+      addr1Tokens = await watchfan.getTokensByOwner(addr1.address);
+      addr2Tokens = await watchfan.getTokensByOwner(addr2.address);
+      expect(addr1Tokens.length).to.equal(1);
+      expect(addr1Tokens[0]).to.equal(2n);
+      expect(addr2Tokens.length).to.equal(1);
+      expect(addr2Tokens[0]).to.equal(1n);
+    });
+  });
+
+  describe("Fonction getTokenMetadata", function () {
+    it("Should return correct metadata for token with serial number", async function () {
+      // Créer un hash de série
+      const serialNumber = "ROLEX-123456";
+      const serialHash = ethers.keccak256(ethers.toUtf8Bytes(serialNumber));
+      
+      // Autoriser une boutique et mint avec numéro de série
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await watchfan.connect(addr1).mintWfNFT(addr2.address, DEFAULT_URI, serialHash);
+      
+      const [uri, purchaseDate, originalShop, returnedSerialHash] = await watchfan.getTokenMetadata(1);
+      
+      expect(uri).to.equal(DEFAULT_URI);
+      expect(purchaseDate).to.be.greaterThan(0);
+      expect(originalShop).to.equal(addr1.address);
+      expect(returnedSerialHash).to.equal(serialHash);
+    });
+
+    it("Should reject query for non-existent token", async function () {
+      await expect(
+        watchfan.getTokenMetadata(999)
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanTransferNotFound");
+    });
+  });
+
+  describe("Fonction getTransferHistory", function () {
+    it("Should return transfer history for token", async function () {
+      // Créer un token avec numéro de série (pour avoir un historique initial)
+      const serialHash = ethers.keccak256(ethers.toUtf8Bytes("ROLEX-123"));
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await watchfan.connect(addr1).mintWfNFT(addr2.address, DEFAULT_URI, serialHash);
+      
+      // Effectuer un transfert
+      await watchfan.connect(addr2).requestTransfer(1, addr3.address);
+      await watchfan.connect(addr3).approveReceive(1);
+      
+      const history = await watchfan.getTransferHistory(1);
+      
+      expect(history.length).to.equal(2);
+      // Premier transfert (mint)
+      expect(history[0].from).to.equal(ethers.ZeroAddress);
+      expect(history[0].to).to.equal(addr2.address);
+      // Deuxième transfert
+      expect(history[1].from).to.equal(addr2.address);
+      expect(history[1].to).to.equal(addr3.address);
+    });
+
+    it("Should reject query for non-existent token", async function () {
+      await expect(
+        watchfan.getTransferHistory(999)
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanTransferNotFound");
+    });
+  });
+
   describe("Système de double validation - Setup", function () {
     beforeEach(async function () {
       // Mint un NFT pour addr1 pour les tests de transfert
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
     });
 
     it("Should block direct transfers", async function () {
@@ -613,7 +526,8 @@ describe("Watchfan NFT Contract", function () {
 
   describe("Demande de transfert (requestTransfer)", function () {
     beforeEach(async function () {
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
     });
 
     it("Should allow owner to request transfer", async function () {
@@ -640,17 +554,17 @@ describe("Watchfan NFT Contract", function () {
       // Adresse zéro
       await expect(
         watchfan.connect(addr1).requestTransfer(1, ethers.ZeroAddress)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidRecipient");
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
 
       // Adresse de contrat
       await expect(
         watchfan.connect(addr1).requestTransfer(1, await watchfan.getAddress())
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidRecipient");
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
 
       // Transfert à soi-même
       await expect(
         watchfan.connect(addr1).requestTransfer(1, addr1.address)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidRecipient");
+      ).to.be.revertedWithCustomError(watchfan, "WatchfanInvalidAddress");
     });
 
     it("Should reject duplicate requests", async function () {
@@ -677,7 +591,8 @@ describe("Watchfan NFT Contract", function () {
   describe("Approbation par le destinataire (approveReceive)", function () {
     it("Should allow recipient to approve and auto-execute transfer", async function () {
       // Setup spécifique pour ce test
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
       await watchfan.connect(addr1).requestTransfer(1, addr2.address);
       
       // Vérifier l'état avant
@@ -700,7 +615,8 @@ describe("Watchfan NFT Contract", function () {
 
     it("Should reject approval from non-recipient", async function () {
       // Setup spécifique pour ce test
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
       await watchfan.connect(addr1).requestTransfer(1, addr2.address);
       
       // Utiliser addr3 depuis la fixture
@@ -721,7 +637,8 @@ describe("Watchfan NFT Contract", function () {
   describe("Annulation de transfert (cancelTransfer)", function () {
     it("Should allow owner to cancel transfer", async function () {
       // Setup spécifique
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
       await watchfan.connect(addr1).requestTransfer(1, addr2.address);
       
       await expect(watchfan.connect(addr1).cancelTransfer(1))
@@ -734,7 +651,8 @@ describe("Watchfan NFT Contract", function () {
 
     it("Should allow recipient to cancel transfer", async function () {
       // Setup spécifique
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
       await watchfan.connect(addr1).requestTransfer(1, addr2.address);
       
       await expect(watchfan.connect(addr2).cancelTransfer(1))
@@ -747,7 +665,8 @@ describe("Watchfan NFT Contract", function () {
 
     it("Should reject cancellation from unauthorized user", async function () {
       // Setup spécifique
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
       await watchfan.connect(addr1).requestTransfer(1, addr2.address);
       
       await expect(
@@ -763,7 +682,8 @@ describe("Watchfan NFT Contract", function () {
 
     it("Should allow new request after cancellation", async function () {
       // Setup spécifique
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
       await watchfan.connect(addr1).requestTransfer(1, addr2.address);
       
       // Annuler
@@ -777,7 +697,8 @@ describe("Watchfan NFT Contract", function () {
 
   describe("Fonctions utilitaires", function () {
     beforeEach(async function () {
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
     });
 
     it("Should correctly report pending transfer status", async function () {
@@ -813,52 +734,16 @@ describe("Watchfan NFT Contract", function () {
 
   });
 
-  describe("Fonctions d'urgence et cas limites", function () {
+  describe("Cas des transferts multiples", function () {
     beforeEach(async function () {
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
-    });
-
-    it("Should allow owner to emergency transfer", async function () {
-      await expect(watchfan.connect(owner).emergencyTransfer(addr1.address, addr2.address, 1))
-        .to.emit(watchfan, "WatchfanTransferred")
-        .withArgs(addr1.address, addr2.address, 1);
-
-      expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
-    });
-
-    it("Should reject emergency transfer from non-owner", async function () {
-      await expect(
-        watchfan.connect(addr1).emergencyTransfer(addr1.address, addr2.address, 1)
-      ).to.be.revertedWithCustomError(watchfan, "OwnableUnauthorizedAccount");
-    });
-
-    it("Should clean pending transfer during emergency", async function () {
-      // Créer une demande en attente
-      await watchfan.connect(addr1).requestTransfer(1, addr2.address);
-      expect(await watchfan.hasPendingTransfer(1)).to.be.true;
-
-      // Transfert d'urgence devrait nettoyer la demande
-      await watchfan.connect(owner).emergencyTransfer(addr1.address, addr2.address, 1);
-      expect(await watchfan.hasPendingTransfer(1)).to.be.false;
-    });
-
-    it("Should handle ownership change during pending transfer", async function () {
-      // Créer une demande
-      await watchfan.connect(addr1).requestTransfer(1, addr2.address);
-      
-      // Le propriétaire du contrat fait un transfert d'urgence vers quelqu'un d'autre
-      await watchfan.connect(owner).emergencyTransfer(addr1.address, addr3.address, 1);
-      
-      // Le destinataire original ne devrait plus pouvoir approuver
-      await expect(
-        watchfan.connect(addr2).approveReceive(1)
-      ).to.be.revertedWithCustomError(watchfan, "WatchfanTransferNotFound");
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
     });
 
     it("Should handle multiple pending transfers correctly", async function () {
       // Mint plusieurs NFTs
-      await watchfan.mintWfNFT(addr1.address, defaultURI); // tokenId 2
-      await watchfan.mintWfNFT(addr2.address, defaultURI); // tokenId 3
+      await mintToAddress(watchfan.connect(addr1), addr1.address); // tokenId 2
+      await mintToAddress(watchfan.connect(addr1), addr2.address); // tokenId 3
       
       // Créer plusieurs demandes
       await watchfan.connect(addr1).requestTransfer(1, addr2.address);
@@ -882,7 +767,8 @@ describe("Watchfan NFT Contract", function () {
   describe("Scénario complet de transfert", function () {
     it("Should complete full transfer workflow", async function () {
       // Setup: Mint NFT
-      await watchfan.mintWfNFT(addr1.address, defaultURI);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await mintToAddress(watchfan.connect(addr1), addr1.address);
       expect(await watchfan.ownerOf(1)).to.equal(addr1.address);
       
       // Étape 1: Demande de transfert
@@ -908,7 +794,8 @@ describe("Watchfan NFT Contract", function () {
       const { serialNumber, serialHash } = createTestSerial("ROLEX");
       
       // Setup: Mint NFT avec numéro de série
-      await watchfan.connect(owner).mintWfNFTWithSerialHash(addr1.address, defaultURI, serialHash);
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      await watchfan.connect(addr1).mintWfNFT(addr1.address, DEFAULT_URI, serialHash);
       expect(await watchfan.ownerOf(1)).to.equal(addr1.address);
       expect(await watchfan.getTokenBySerialHash(serialHash)).to.equal(1);
       
@@ -918,7 +805,6 @@ describe("Watchfan NFT Contract", function () {
       
       // Vérifications finales
       expect(await watchfan.ownerOf(1)).to.equal(addr2.address);
-      expect(await watchfan.hasSerialNumber(1)).to.be.true;
       expect(await watchfan.verifySerialNumberHash(1, serialHash)).to.be.true;
     });
   });
