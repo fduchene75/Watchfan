@@ -1,7 +1,7 @@
-// app/layout.js (version debug)
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import RainbowKitAndWagmiProvider from "./RainbowKitAndWagmiProvider";
+import Layout from "@/components/shared/Layout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,19 +14,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Watchfan Debug",
-  description: "Test de debug",
+  title: "Watchfan - NFT pour montres",
+  description: "Plateforme de certification NFT pour montres de luxe",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <RainbowKitAndWagmiProvider>
-          <div style={{padding: '20px', border: '2px solid red'}}>
-            <h2>DEBUG: Layout fonctionne</h2>
+          <Layout>
             {children}
-          </div>
+          </Layout>
         </RainbowKitAndWagmiProvider>
       </body>
     </html>
