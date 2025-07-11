@@ -1,5 +1,6 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Image from "next/image";
+import UserTypeBadge from "./UserTypeBadge";
 
 const Header = () => {
     return (
@@ -13,6 +14,9 @@ const Header = () => {
                     className="w-auto"
                 />
             </div>
+            <div className="flex-1 flex justify-center">
+                <UserTypeBadge />
+            </div>            
             <div>
                 <ConnectButton />
             </div>
