@@ -5,29 +5,25 @@ export const mockWatches = [
     brand: "Rolex",
     model: "Submariner", 
     reference: "116610LN",
-    serialNumber: "R123456789",
-    ipfsUri: "ipfs://QmYourHashHere"
+    serialNumber: "R123456789"
   },
   {
     brand: "Omega",
     model: "Speedmaster", 
     reference: "311.30.42.30",
-    serialNumber: "O987654321",
-    ipfsUri: "ipfs://QmAnotherHashHere"
+    serialNumber: "O987654321"
   },
   {
     brand: "TAG Heuer",
     model: "Monaco", 
     reference: "CAW2111",
-    serialNumber: "T456789123",
-    ipfsUri: "ipfs://QmThirdHashHere"
+    serialNumber: "T456789123"
   },
   {
     brand: "Patek Philippe",
     model: "Nautilus", 
     reference: "5711/1A",
-    serialNumber: "P789123456",
-    ipfsUri: "ipfs://QmFourthHashHere"
+    serialNumber: "P789123456"
   }
 ];
 
@@ -36,22 +32,10 @@ export const generateIPFSMetadata = (watch) => {
   return {
     name: `${watch.brand} ${watch.model}`,
     description: `Certificat NFT pour ${watch.brand} ${watch.model} ${watch.reference}`,
-    image: "ipfs://QmWatchImageHash", // Hash de l'image de la montre
     attributes: [
       { trait_type: "Brand", value: watch.brand },
       { trait_type: "Model", value: watch.model },
       { trait_type: "Reference", value: watch.reference }
     ]
   };
-};
-
-// Fonction pour générer un QR code mock
-export const generateMockQRCode = (watch) => {
-  return JSON.stringify({
-    brand: watch.brand,
-    model: watch.model,
-    reference: watch.reference,
-    serialNumber: watch.serialNumber,
-    timestamp: Date.now()
-  });
 };

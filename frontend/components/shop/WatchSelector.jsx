@@ -4,51 +4,73 @@
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { keccak256, toBytes } from 'viem';
-import { mockWatches, generateIPFSMetadata, generateMockQRCode } from '@/lib/mockWatches';
+import { mockWatches, generateIPFSMetadata } from '@/lib/mockWatches';
 import { useWatchfanContract } from '@/hooks/useWatchfanContract';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { uploadMetadataToIPFS } from '@/lib/ipfsService';
 
 const WatchSelector = () => {
   const { address } = useAccount();
   const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error } = useWatchfanContract();
   
+  const [mintError, setMintError] = useState(null);
   const [selectedWatch, setSelectedWatch] = useState(null);
-  const [qrCodeData, setQrCodeData] = useState(null);
   const [ipfsMetadata, setIpfsMetadata] = useState(null);
   const [recipientAddress, setRecipientAddress] = useState('');
 
   const handleWatchSelect = (watchIndex) => {
-    const watch = mockWatches[watchIndex];
+    const watch = mockWatches[parseInt(watchIndex)];
     setSelectedWatch(watch);
-    setQrCodeData(null);
-    setIpfsMetadata(null);
-    setRecipientAddress('');
-  };
+    setMintError(null);
+    
+    // Générer automatiquement les metadonnées
+    if (watch) {
+        const metadata = generateIPFSMetadata(watch);
+        setIpfsMetadata(metadata);
+        // On ajouter le Serial Number (qui n'ira pas dans IPFS)
+        const enrichedMetadata = {
+            ...metadata,
+            serialNumber: watch.serialNumber,
+            serialHash: keccak256(toBytes(watch.serialNumber))
+        };
+        setIpfsMetadata(enrichedMetadata);        
+    }
 
-  const handleGenerateQRCode = () => {
-    if (!selectedWatch) return;
-    const qrData = generateMockQRCode(selectedWatch);
-    setQrCodeData(qrData);
-  };
-
-  const handleGenerateMetadata = () => {
-    if (!selectedWatch) return;
-    const metadata = generateIPFSMetadata(selectedWatch);
-    setIpfsMetadata(metadata);
   };
 
   const handleMintNFT = async () => {
     if (!selectedWatch || !recipientAddress || !ipfsMetadata) return;
-    
-    // Générer le hash du numéro de série
-    const serialHash = keccak256(toBytes(selectedWatch.serialNumber));
-    
-    // Utiliser l'URI IPFS mock du selectedWatch
-    await mintWfNFT(recipientAddress, selectedWatch.ipfsUri, serialHash);
-  };
+
+    try {
+        // Upload vers IPFS au moment du mint
+        const { serialNumber, serialHash, ...metadataForIPFS } = ipfsMetadata;
+        
+        const ipfsResult = await uploadMetadataToIPFS(metadataForIPFS, selectedWatch);
+        
+        if (!ipfsResult.success) {
+        throw new Error("Échec upload IPFS: " + ipfsResult.error);
+        }
+        
+        // DEBUG
+        console.log("📋 Paramètres du mint:");
+        console.log("- Recipient:", recipientAddress);
+        console.log("- IPFS URI:", ipfsResult.ipfsUri);
+        console.log("- Serial Hash:", serialHash);
+        console.log("- Serial Hash type:", typeof serialHash);
+        console.log("- Serial Hash length:", serialHash.length);
+
+        // Mint avec l'URI IPFS fraîchement généré et le hash du serial
+        await mintWfNFT(recipientAddress, ipfsResult.ipfsUri, serialHash);
+        
+    } catch (error) {
+        console.error("❌ Erreur lors du mint:", error);
+        setMintError(error.message);
+    }
+ };
 
   const canMint = selectedWatch && ipfsMetadata && recipientAddress && !isPending && !isConfirming;
 
@@ -56,7 +78,7 @@ const WatchSelector = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Simuler scan QR code</CardTitle>
+          <CardTitle>Sélection montre avec toutes ses données</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Select onValueChange={handleWatchSelect}>
@@ -81,32 +103,10 @@ const WatchSelector = () => {
                 <Badge>{selectedWatch.reference}</Badge>
                 <Badge variant="outline">{selectedWatch.serialNumber}</Badge>
               </div>
-              
-              <div className="flex gap-2">
-                <Button onClick={handleGenerateQRCode} size="sm">
-                  QR Code Mock
-                </Button>
-                <Button onClick={handleGenerateMetadata} variant="outline" size="sm">
-                  Générer métadonnées
-                </Button>
-              </div>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {qrCodeData && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Données QR générées</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-sm bg-gray-100 p-2 rounded">
-              {qrCodeData}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
 
       {ipfsMetadata && (
         <Card>
@@ -114,7 +114,6 @@ const WatchSelector = () => {
             <CardTitle>Métadonnées IPFS</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Badge className="mb-2">URI: {selectedWatch.ipfsUri}</Badge>
             <pre className="text-sm bg-gray-100 p-2 rounded">
               {JSON.stringify(ipfsMetadata, null, 2)}
             </pre>
@@ -123,12 +122,11 @@ const WatchSelector = () => {
             <div className="border-t pt-4">
               <h4 className="font-semibold mb-2">Mint NFT</h4>
               <div className="space-y-2">
-                <input
+                <Input
                   type="text"
                   placeholder="Adresse du destinataire (0x...)"
                   value={recipientAddress}
                   onChange={(e) => setRecipientAddress(e.target.value)}
-                  className="w-full p-2 border rounded"
                 />
                 <Button 
                   onClick={handleMintNFT}
@@ -152,10 +150,11 @@ const WatchSelector = () => {
             <CardTitle>Transaction</CardTitle>
           </CardHeader>
           <CardContent>
-            {isConfirming && <p>En attente de confirmation...</p>}
+            {isConfirming && <p>⏳ En attente de confirmation...</p>}
             {isConfirmed && <p className="text-green-600">✅ NFT minté avec succès !</p>}
-            {error && <p className="text-red-600">❌ Erreur: {error.message}</p>}
-            <p className="text-sm text-gray-600">Hash: {hash}</p>
+            {error && <p className="text-red-600">❌ Erreur blockchain: {error.message}</p>}
+            {mintError && <p className="text-red-600">❌ Erreur: {mintError}</p>}
+            {hash && <p className="text-sm text-gray-600">Hash: {hash}</p>}
           </CardContent>
         </Card>
       )}
