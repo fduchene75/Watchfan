@@ -9,67 +9,82 @@ import { useState, useEffect } from 'react';
 
 const NFTCollectionViewer = () => {
   const { address } = useAccount();
-  const { useTokensByOwner, useTotalSupply } = useWatchfanContract();
+  const { useTokensByOwner, useTokenMetadata } = useWatchfanContract();
   
   // Récupérer les tokens de l'utilisateur connecté
   const { data: userTokens, isLoading: tokensLoading, error: tokensError } = useTokensByOwner(address);
-  const { data: totalSupply } = useTotalSupply();
   
   const [nftDetails, setNftDetails] = useState([]);
 
-  // Fonction pour récupérer les métadonnées IPFS (simulation)
-  const fetchNFTMetadata = async (ipfsUri) => {
-    try {
-      // Pour le moment, on simule les métadonnées basées sur l'URI mock
-      const mockMetadata = {
-        name: "Montre certifiée Watchfan",
-        image: "https://via.placeholder.com/400x400/000000/FFFFFF?text=Watch+NFT",
-        attributes: [
-          { trait_type: "Status", value: "Certified" },
-          { trait_type: "Type", value: "Luxury Watch" }
-        ]
-      };
-      return mockMetadata;
-    } catch (error) {
-      console.error('Erreur récupération métadonnées:', error);
-      return null;
+  // Composant pour afficher chaque NFT individuellement
+  const NFTCard = ({ tokenId }) => {
+    const { data: contractData, isLoading: metadataLoading } = useTokenMetadata(tokenId);
+    
+    if (metadataLoading) {
+      return (
+        <Card>
+          <CardContent className="p-6">
+            <p>Chargement NFT #{tokenId}...</p>
+          </CardContent>
+        </Card>
+      );
     }
+    
+    if (!contractData) {
+      return (
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-red-600">Erreur chargement NFT #{tokenId}</p>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    const [uri, purchaseDate, originalShop, serialHash] = contractData;
+    const mintDate = new Date(Number(purchaseDate) * 1000).toLocaleDateString();
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Montre certifiée #{tokenId}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 gap-2 text-sm">
+            <div><strong>Token ID:</strong> {tokenId}</div>
+            <div><strong>Date de certification:</strong> {mintDate}</div>
+            <div><strong>Boutique:</strong> <span className="font-mono text-xs">{originalShop}</span></div>
+            <div><strong>Hash série:</strong> <span className="font-mono text-xs">{serialHash}</span></div>
+            <div><strong>URI IPFS:</strong> <span className="font-mono text-xs">{uri}</span></div>
+          </div>
+          
+          <div className="bg-gray-100 p-3 rounded">
+            <p className="text-sm text-gray-600 italic">
+              📦 Métadonnées à récupérer dans IPFS
+            </p>
+          </div>
+          
+          <div className="flex gap-2">
+            <Badge variant="default" className="bg-green-100 text-green-800">✅ Certifié</Badge>
+            <Badge variant="secondary">🔒 Blockchain</Badge>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   // Charger les détails des NFTs quand on a les tokens
   useEffect(() => {
-    const loadNFTDetails = async () => {
-      if (!userTokens || userTokens.length === 0) {
-        setNftDetails([]);
-        return;
-      }
+    if (!userTokens || userTokens.length === 0) {
+      setNftDetails([]);
+      return;
+    }
 
-      const details = await Promise.all(
-        userTokens.map(async (tokenId) => {
-          try {
-            // Récupérer les métadonnées IPFS (simulation)
-            const metadata = await fetchNFTMetadata('mock-uri');
-            
-            return {
-              tokenId: tokenId.toString(),
-              metadata,
-              mintDate: new Date().toLocaleDateString(), // Simulation
-            };
-          } catch (error) {
-            console.error(`Erreur pour token ${tokenId}:`, error);
-            return {
-              tokenId: tokenId.toString(),
-              metadata: null,
-              mintDate: 'Unknown'
-            };
-          }
-        })
-      );
-      
-      setNftDetails(details);
-    };
-
-    loadNFTDetails();
+    // Créer une liste simple avec juste les tokenIds
+    const details = userTokens.map((tokenId) => ({
+      tokenId: tokenId.toString()
+    }));
+    
+    setNftDetails(details);
   }, [userTokens]);
 
   if (tokensLoading) {
@@ -121,45 +136,7 @@ const NFTCollectionViewer = () => {
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {nftDetails.map((nft) => (
-            <Card key={nft.tokenId}>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  NFT #{nft.tokenId}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {nft.metadata ? (
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="font-semibold">{nft.metadata.name}</h4>
-                      <p className="text-sm text-gray-600">{nft.metadata.description}</p>
-                    </div>
-                    
-                    <div className="bg-gray-100 p-3 rounded text-center">
-                      <div className="text-4xl mb-2">⌚</div>
-                      <p className="text-xs">Image NFT</p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm font-semibold mb-1">Attributs:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {nft.metadata.attributes?.map((attr, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {attr.trait_type}: {attr.value}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="text-xs text-gray-500">
-                      Minté le: {nft.mintDate}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-red-600">Erreur chargement métadonnées</p>
-                )}
-              </CardContent>
-            </Card>
+            <NFTCard key={nft.tokenId} tokenId={nft.tokenId} />
           ))}
         </div>
       )}

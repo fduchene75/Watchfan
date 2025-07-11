@@ -1,11 +1,12 @@
 // A défaut d'API constructeur pour récupérer les données des montres via le QR code, on sélectionne parmi des données factices
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { keccak256, toBytes } from 'viem';
 import { mockWatches, generateIPFSMetadata } from '@/lib/mockWatches';
 import { useWatchfanContract } from '@/hooks/useWatchfanContract';
+import { useSerialValidation } from '@/hooks/useSerialValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -15,12 +16,16 @@ import { uploadMetadataToIPFS } from '@/lib/ipfsService';
 
 const WatchSelector = () => {
   const { address } = useAccount();
-  const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error } = useWatchfanContract();
+  const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error, useTotalSupply } = useWatchfanContract();
+  const { data: totalSupply } = useTotalSupply();
+  const { checkSerialHash, resetValidation, isChecking, exists, error: validationError } = useSerialValidation();
   
   const [mintError, setMintError] = useState(null);
   const [selectedWatch, setSelectedWatch] = useState(null);
   const [ipfsMetadata, setIpfsMetadata] = useState(null);
   const [recipientAddress, setRecipientAddress] = useState('');
+
+  const [currentSerialHash, setCurrentSerialHash] = useState(null);
 
   const handleWatchSelect = (watchIndex) => {
     const watch = mockWatches[parseInt(watchIndex)];
@@ -32,18 +37,27 @@ const WatchSelector = () => {
         const metadata = generateIPFSMetadata(watch);
         setIpfsMetadata(metadata);
         // On ajouter le Serial Number (qui n'ira pas dans IPFS)
+        const serialHash = keccak256(toBytes(watch.serialNumber));
         const enrichedMetadata = {
             ...metadata,
             serialNumber: watch.serialNumber,
-            serialHash: keccak256(toBytes(watch.serialNumber))
+            serialHash
         };
-        setIpfsMetadata(enrichedMetadata);        
+        setIpfsMetadata(enrichedMetadata);   
+        // Vérifier si ce numéro de série existe déjà
+        checkSerialHash(serialHash);     
     }
 
   };
 
   const handleMintNFT = async () => {
     if (!selectedWatch || !recipientAddress || !ipfsMetadata) return;
+
+    // Vérification Serial avant mint
+    if (exists) {
+      setMintError("Ce numéro de série est déjà minté");
+      return;
+    }
 
     try {
         // Upload vers IPFS au moment du mint
@@ -54,31 +68,47 @@ const WatchSelector = () => {
         if (!ipfsResult.success) {
         throw new Error("Échec upload IPFS: " + ipfsResult.error);
         }
-        
-        // DEBUG
-        console.log("📋 Paramètres du mint:");
-        console.log("- Recipient:", recipientAddress);
-        console.log("- IPFS URI:", ipfsResult.ipfsUri);
-        console.log("- Serial Hash:", serialHash);
-        console.log("- Serial Hash type:", typeof serialHash);
-        console.log("- Serial Hash length:", serialHash.length);
 
         // Mint avec l'URI IPFS fraîchement généré et le hash du serial
         await mintWfNFT(recipientAddress, ipfsResult.ipfsUri, serialHash);
         
     } catch (error) {
         console.error("❌ Erreur lors du mint:", error);
-        setMintError(error.message);
+        // Gestion spécifique des erreurs de contrat
+        if (error.message?.includes('WatchfanSerialHashAlreadyExists')) {
+            setMintError("Ce numéro de série existe déjà dans la blockchain. Impossible de minter deux fois la même montre.");
+        } else if (error.message?.includes('WatchfanUnauthorizedMinting')) {
+            setMintError("Vous n'êtes pas autorisé à minter des NFTs. Contactez l'administrateur.");
+        } else if (error.message?.includes('WatchfanInvalidAddress')) {
+            setMintError("Adresse du destinataire invalide.");
+        } else if (error.message?.includes('WatchfanInvalidSerialHash')) {
+            setMintError("Numéro de série invalide.");
+        } else {
+            setMintError(error.message);
+        }
     }
  };
 
-  const canMint = selectedWatch && ipfsMetadata && recipientAddress && !isPending && !isConfirming;
+  const canMint = selectedWatch && ipfsMetadata && recipientAddress && !isPending && !isConfirming && !exists && !isChecking;
+
+  const getButtonText = () => {
+    if (isPending) return 'Préparation...';
+    if (isConfirming) return 'Confirmation...';
+    if (isChecking) return 'Vérification...';
+    if (exists) return 'Le NFT de cette montre existe déjà';
+    return 'Mint NFT';
+  };
 
   return (
     <div className="space-y-4">
+
+        <Badge variant="outline" className="text-lg p-3">
+        NFT mintés: {totalSupply?.toString() || "0"}
+        </Badge>
+
       <Card>
         <CardHeader>
-          <CardTitle>Sélection montre avec toutes ses données</CardTitle>
+          <CardTitle>Sélection nouvelle montre avec toutes ses données</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Select onValueChange={handleWatchSelect}>
@@ -129,13 +159,12 @@ const WatchSelector = () => {
                   onChange={(e) => setRecipientAddress(e.target.value)}
                 />
                 <Button 
-                  onClick={handleMintNFT}
-                  disabled={!canMint}
-                  className="w-full"
+                onClick={handleMintNFT}
+                disabled={!canMint}
+                className="w-full"
+                variant={exists ? "destructive" : "default"}
                 >
-                  {isPending && 'Préparation...'}
-                  {isConfirming && 'Confirmation...'}
-                  {!isPending && !isConfirming && 'Mint NFT'}
+                {getButtonText()}
                 </Button>
               </div>
             </div>
