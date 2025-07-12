@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import '@rainbow-me/rainbowkit/styles.css';
 import {
   getDefaultConfig,
@@ -7,30 +8,60 @@ import {
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import {
-  hardhat
-} from 'wagmi/chains';
+import { hardhat } from 'wagmi/chains';
 import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
 
+// Configuration réseau pour Hardhat local
+const localChain = {
+  ...hardhat,
+  id: 31337,
+  name: 'Hardhat Local',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ether',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: {
+      http: ['http://127.0.0.1:8545'],
+    },
+    public: {
+      http: ['http://127.0.0.1:8545'],
+    },
+  },
+};
+
 const config = getDefaultConfig({
   appName: 'Watchfan',
   projectId: '9db53c307697652817d4b61d699e91ce',
-  chains: [hardhat],
-  ssr: true, // If your dApp uses server side rendering (SSR)
+  chains: [localChain],
+  ssr: true,
 });
 
-const queryClient = new QueryClient();
+const RainbowKitAndWagmiProvider = ({ children }) => {
+  // Créer le QueryClient une seule fois côté client
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        retry: 1,
+      },
+    },
+  }));
 
-const RainbowKitAndWagmiProvider = ({children}) => {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={lightTheme({
+        <RainbowKitProvider 
+          theme={lightTheme({
             borderRadius: 'small',
-            fontStack: 'system',})}>
+            fontStack: 'system',
+          })}
+          showRecentTransactions={true}
+        >
           {children}
         </RainbowKitProvider>
       </QueryClientProvider>

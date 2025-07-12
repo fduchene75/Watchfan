@@ -12,25 +12,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { uploadMetadataToIPFS } from '@/lib/ipfsService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, CheckCircle } from 'lucide-react';
+import { useMintService } from '@/hooks/useMintService';
 
 const WatchSelector = () => {
   const { address } = useAccount();
   const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error, useTotalSupply } = useWatchfanContract();
+  const { mintNFT, resetMint, isProcessing, mintResult } = useMintService(mintWfNFT);
   const { data: totalSupply } = useTotalSupply();
   const { checkSerialHash, resetValidation, isChecking, exists, error: validationError } = useSerialValidation();
-  
-  const [mintError, setMintError] = useState(null);
   const [selectedWatch, setSelectedWatch] = useState(null);
   const [ipfsMetadata, setIpfsMetadata] = useState(null);
   const [recipientAddress, setRecipientAddress] = useState('');
-
   const [currentSerialHash, setCurrentSerialHash] = useState(null);
 
   const handleWatchSelect = (watchIndex) => {
     const watch = mockWatches[parseInt(watchIndex)];
     setSelectedWatch(watch);
-    setMintError(null);
+    resetMint();
     
     // Générer automatiquement les metadonnées
     if (watch) {
@@ -51,53 +51,36 @@ const WatchSelector = () => {
   };
 
   const handleMintNFT = async () => {
-    if (!selectedWatch || !recipientAddress || !ipfsMetadata) return;
+    await mintNFT({
+      selectedWatch,
+      recipientAddress,
+      ipfsMetadata,
+      exists
+    });
+  };
 
-    // Vérification Serial avant mint
-    if (exists) {
-      setMintError("Ce numéro de série est déjà minté");
-      return;
-    }
-
-    try {
-        // Upload vers IPFS au moment du mint
-        const { serialNumber, serialHash, ...metadataForIPFS } = ipfsMetadata;
-        
-        const ipfsResult = await uploadMetadataToIPFS(metadataForIPFS, selectedWatch);
-        
-        if (!ipfsResult.success) {
-        throw new Error("Échec upload IPFS: " + ipfsResult.error);
-        }
-
-        // Mint avec l'URI IPFS fraîchement généré et le hash du serial
-        await mintWfNFT(recipientAddress, ipfsResult.ipfsUri, serialHash);
-        
-    } catch (error) {
-        console.error("❌ Erreur lors du mint:", error);
-        // Gestion spécifique des erreurs de contrat
-        if (error.message?.includes('WatchfanSerialHashAlreadyExists')) {
-            setMintError("Ce numéro de série existe déjà dans la blockchain. Impossible de minter deux fois la même montre.");
-        } else if (error.message?.includes('WatchfanUnauthorizedMinting')) {
-            setMintError("Vous n'êtes pas autorisé à minter des NFTs. Contactez l'administrateur.");
-        } else if (error.message?.includes('WatchfanInvalidAddress')) {
-            setMintError("Adresse du destinataire invalide.");
-        } else if (error.message?.includes('WatchfanInvalidSerialHash')) {
-            setMintError("Numéro de série invalide.");
-        } else {
-            setMintError(error.message);
-        }
-    }
- };
-
-  const canMint = selectedWatch && ipfsMetadata && recipientAddress && !isPending && !isConfirming && !exists && !isChecking;
+  const canMint = selectedWatch && ipfsMetadata && recipientAddress && !isProcessing && !isPending && !isConfirming && !exists && !isChecking;
 
   const getButtonText = () => {
+    if (isProcessing) return 'Upload IPFS...';
     if (isPending) return 'Préparation...';
     if (isConfirming) return 'Confirmation...';
     if (isChecking) return 'Vérification...';
     if (exists) return 'Le NFT de cette montre existe déjà';
     return 'Mint NFT';
   };
+
+  // On doit reset après succès (pour bloquer bouton Mint)
+  useEffect(() => {
+    if (isConfirmed) {
+      // Reset tout après succès
+      setSelectedWatch(null);
+      setIpfsMetadata(null);
+      setRecipientAddress('');
+      resetMint();
+      resetValidation();
+    }
+  }, [isConfirmed, resetMint, resetValidation]);
 
   return (
     <div className="space-y-4">
@@ -173,20 +156,29 @@ const WatchSelector = () => {
       )}
 
       {/* États de transaction */}
-      {hash && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Transaction</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isConfirming && <p>⏳ En attente de confirmation...</p>}
-            {isConfirmed && <p className="text-green-600">✅ NFT minté avec succès !</p>}
-            {error && <p className="text-red-600">❌ Erreur blockchain: {error.message}</p>}
-            {mintError && <p className="text-red-600">❌ Erreur: {mintError}</p>}
-            {hash && <p className="text-sm text-gray-600">Hash: {hash}</p>}
-          </CardContent>
-        </Card>
+      {isConfirming && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>⏳ En attente de confirmation...</AlertDescription>
+        </Alert>
       )}
+
+      {isConfirmed && (
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>✅ NFT minté avec succès ! Hash: {hash}</AlertDescription>
+        </Alert>
+      )}
+
+      {(error || (mintResult && !mintResult.success)) && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            ❌ {error?.message || mintResult?.error}
+          </AlertDescription>
+        </Alert>
+      )}
+
     </div>
   );
 };
