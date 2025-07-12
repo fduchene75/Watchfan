@@ -763,6 +763,72 @@ describe("Watchfan NFT Contract", function () {
     });
   });
 
+  describe("Fonction getTransfersForUser", function () {
+    beforeEach(async function () {
+      await watchfan.connect(owner).setShopAddress(addr1.address, true);
+      // Mint plusieurs NFTs pour différents propriétaires
+      await mintToAddress(watchfan.connect(addr1), addr1.address); // tokenId 1 (addr1)
+      await mintToAddress(watchfan.connect(addr1), addr2.address); // tokenId 2 (addr2)
+      await mintToAddress(watchfan.connect(addr1), addr3.address); // tokenId 3 (addr3)
+    });
+
+    it("Should return empty array when user has no pending transfers", async function () {
+      const transfers = await watchfan.getTransfersForUser(addr1.address);
+      expect(transfers.length).to.equal(0);
+    });
+
+    it("Should return transfers where user is sender", async function () {
+      // addr1 demande un transfert vers addr2
+      await watchfan.connect(addr1).requestTransfer(1, addr2.address);
+      
+      const transfers = await watchfan.getTransfersForUser(addr1.address);
+      expect(transfers.length).to.equal(1);
+      expect(transfers[0]).to.equal(1);
+    });
+
+    it("Should return transfers where user is recipient", async function () {
+      // addr2 va recevoir un transfert de addr1
+      await watchfan.connect(addr1).requestTransfer(1, addr2.address);
+      
+      const transfers = await watchfan.getTransfersForUser(addr2.address);
+      expect(transfers.length).to.equal(1);
+      expect(transfers[0]).to.equal(1);
+    });
+
+    it("Should return multiple transfers for active user", async function () {
+      // addr2 est impliqué dans plusieurs transferts
+      await watchfan.connect(addr1).requestTransfer(1, addr2.address); // addr2 reçoit
+      await watchfan.connect(addr2).requestTransfer(2, addr3.address); // addr2 envoie
+      
+      const transfers = await watchfan.getTransfersForUser(addr2.address);
+      expect(transfers.length).to.equal(2);
+      expect(transfers).to.include(1n);
+      expect(transfers).to.include(2n);
+    });
+
+    it("Should not return completed transfers", async function () {
+      // Créer et compléter un transfert
+      await watchfan.connect(addr1).requestTransfer(1, addr2.address);
+      await watchfan.connect(addr2).approveReceive(1);
+      
+      // Vérifier qu'il n'apparaît plus dans les transferts en cours
+      const addr1Transfers = await watchfan.getTransfersForUser(addr1.address);
+      const addr2Transfers = await watchfan.getTransfersForUser(addr2.address);
+      
+      expect(addr1Transfers.length).to.equal(0);
+      expect(addr2Transfers.length).to.equal(0);
+    });
+
+    it("Should not return cancelled transfers", async function () {
+      // Créer et annuler un transfert
+      await watchfan.connect(addr1).requestTransfer(1, addr2.address);
+      await watchfan.connect(addr1).cancelTransfer(1);
+      
+      const transfers = await watchfan.getTransfersForUser(addr1.address);
+      expect(transfers.length).to.equal(0);
+    });
+  });
+
   // Test final de bout en bout
   describe("Scénario complet de transfert", function () {
     it("Should complete full transfer workflow", async function () {

@@ -441,4 +441,32 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         );
     }
 
+    // Fonction pour obtenir tous les transferts en cours concernant une adresse
+    function getTransfersForUser(address user) external view returns (uint32[] memory) {
+        uint256 count = 0;
+        
+        // Premier passage : compter les transferts concernant l'utilisateur
+        for (uint32 tokenId = 1; tokenId < _nextTokenId; tokenId++) {
+            PendingTransfer storage transfer = pendingTransfers[tokenId];
+            if (transfer.from == user || transfer.to == user) {
+                count++;
+            }
+        }
+        
+        // Créer le tableau de la bonne taille
+        uint32[] memory userTransfers = new uint32[](count);
+        uint256 currentIndex = 0;
+        
+        // Deuxième passage : remplir le tableau
+        for (uint32 tokenId = 1; tokenId < _nextTokenId; tokenId++) {
+            PendingTransfer storage transfer = pendingTransfers[tokenId];
+            if (transfer.from == user || transfer.to == user) {
+                userTransfers[currentIndex] = tokenId;
+                currentIndex++;
+            }
+        }
+        
+        return userTransfers;
+    }
+
 }
