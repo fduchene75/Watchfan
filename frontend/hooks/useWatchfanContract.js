@@ -4,7 +4,7 @@ import { contractAddress, contractABI } from '@/constants';
 
 export function useWatchfanContract() {
  // Hook pour les écritures (transactions)
- const { writeContract, data: hash, isPending, error } = useWriteContract();
+ const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
  
  // Hook pour attendre la confirmation des transactions
  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
@@ -51,19 +51,12 @@ export function useWatchfanContract() {
  const useGetTokenBySerialHash = (serialHash) => 
    useReadContractData('getTokenBySerialHash', serialHash ? [serialHash] : undefined);
 
- // Fonction globale pour gérer les erreurs de contrat
- const handleContractError = async (contractFunction, ...args) => {
-   try {
-     return await contractFunction(...args);
-   } catch (error) {
-     console.error("❌ Erreur de contrat:", error);
-     throw error;
-   }
- };
+ const useTransfersForUser = (userAddress) => 
+    useReadContractData('getTransfersForUser', userAddress ? [userAddress] : undefined);
 
  // Fonctions d'écriture (transactions)
  const mintWfNFT = async (recipient, uri, serialHash) => {
-   return handleContractError(writeContract, {
+   return await writeContractAsync({
      address: contractAddress,
      abi: contractABI,
      functionName: 'mintWfNFT',
@@ -72,7 +65,7 @@ export function useWatchfanContract() {
  };
 
  const requestTransfer = async (tokenId, to) => {
-   return handleContractError(writeContract, {
+   return await writeContractAsync({
      address: contractAddress,
      abi: contractABI,
      functionName: 'requestTransfer',
@@ -81,7 +74,7 @@ export function useWatchfanContract() {
  };
 
  const approveReceive = async (tokenId) => {
-   return handleContractError(writeContract, {
+   return await writeContractAsync({
      address: contractAddress,
      abi: contractABI,
      functionName: 'approveReceive',
@@ -90,7 +83,7 @@ export function useWatchfanContract() {
  };
 
  const cancelTransfer = async (tokenId) => {
-   return handleContractError(writeContract, {
+   return await writeContractAsync({
      address: contractAddress,
      abi: contractABI,
      functionName: 'cancelTransfer',
@@ -99,7 +92,7 @@ export function useWatchfanContract() {
  };
 
  const setShopAddress = async (shop, authorized) => {
-   return handleContractError(writeContract, {
+   return await writeContractAsync({
      address: contractAddress,
      abi: contractABI,
      functionName: 'setShopAddress',
@@ -119,6 +112,7 @@ export function useWatchfanContract() {
    useIsAuthorizedShop,
    useSerialHashExists,
    useGetTokenBySerialHash,
+   useTransfersForUser,
    
    // Fonctions d'écriture
    mintWfNFT,

@@ -1,10 +1,21 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { uploadMetadataToIPFS } from '@/lib/ipfsService';
 import { parseContractError } from '@/lib/contractErrors';
 
 export const useMintService = (mintWfNFT) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mintResult, setMintResult] = useState(null);
+
+  // Ajouter un useEffect qui reset le message après quelques secondes
+  useEffect(() => {
+    if (mintResult?.success) {
+      const timer = setTimeout(() => {
+        setMintResult(null);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [mintResult]);
 
   const mintNFT = useCallback(async ({ selectedWatch, recipientAddress, ipfsMetadata, exists }) => {
     setIsProcessing(true);

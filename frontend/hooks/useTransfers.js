@@ -2,16 +2,19 @@ import { useWatchfanContract } from './useWatchfanContract';
 import { useAccount } from 'wagmi';
 import { useState } from 'react';
 import { parseContractError } from '@/lib/contractErrors';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const useTransfers = () => {
   const { address } = useAccount();
+  const queryClient = useQueryClient();
   const { 
     requestTransfer, 
     approveReceive, 
     cancelTransfer,
     useHasPendingTransfer,
     usePendingTransfer,
-    useTokensByOwner 
+    useTokensByOwner,
+    useTransfersForUser
   } = useWatchfanContract();
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,9 +28,15 @@ export const useTransfers = () => {
     setSuccess(null);
 
     try {
-      const tx = await requestTransfer(tokenId, recipientAddress);
-      setSuccess(`Demande de transfert envoyée ! Hash: ${tx.hash}`);
-      return tx;
+      const txHash = await requestTransfer(tokenId, recipientAddress);
+      setSuccess(`Demande de transfert envoyée ! Hash: ${txHash}`);
+      
+      // Rafraîchir les données après succès
+      await queryClient.invalidateQueries({
+        queryKey: ['readContract'],
+      });
+      
+      return txHash;
     } catch (err) {
       const errorMessage = parseContractError(err);
       setError(errorMessage);
@@ -44,9 +53,15 @@ export const useTransfers = () => {
     setSuccess(null);
 
     try {
-      const tx = await approveReceive(tokenId);
-      setSuccess(`Transfert approuvé et exécuté ! Hash: ${tx.hash}`);
-      return tx;
+      const txHash = await approveReceive(tokenId);
+      setSuccess(`Transfert approuvé et exécuté ! Hash: ${txHash}`);
+      
+      // Rafraîchir les données après succès
+      await queryClient.invalidateQueries({
+        queryKey: ['readContract'],
+      });
+      
+      return txHash;
     } catch (err) {
       const errorMessage = parseContractError(err);
       setError(errorMessage);
@@ -63,9 +78,15 @@ export const useTransfers = () => {
     setSuccess(null);
 
     try {
-      const tx = await cancelTransfer(tokenId);
-      setSuccess(`Transfert annulé ! Hash: ${tx.hash}`);
-      return tx;
+      const txHash = await cancelTransfer(tokenId);
+      setSuccess(`Transfert annulé ! Hash: ${txHash}`);
+      
+      // Rafraîchir les données après succès
+      await queryClient.invalidateQueries({
+        queryKey: ['readContract'],
+      });
+      
+      return txHash;
     } catch (err) {
       const errorMessage = parseContractError(err);
       setError(errorMessage);
@@ -77,30 +98,24 @@ export const useTransfers = () => {
 
   // Fonction pour récupérer tous les transferts concernant l'utilisateur
   const getMyTransfers = () => {
-    const { data: myTokens } = useTokensByOwner(address);
+    const { data: tokenIds } = useTransfersForUser(address);
     const transfers = [];
 
-    if (myTokens && myTokens.length > 0) {
-      myTokens.forEach(tokenId => {
-        const { data: hasPending } = useHasPendingTransfer(tokenId);
-        if (hasPending) {
-          const { data: pendingData } = usePendingTransfer(tokenId);
-          if (pendingData) {
-            const [from, to, ownerApproved, recipientApproved, timestamp] = pendingData;
-            
-            // Ajouter seulement si l'utilisateur connecté est concerné
-            if (from === address || to === address) {
-              transfers.push({
-                tokenId: tokenId.toString(),
-                from,
-                to,
-                ownerApproved,
-                recipientApproved,
-                timestamp: Number(timestamp),
-                userRole: from === address ? 'sender' : 'recipient'
-              });
-            }
-          }
+    if (tokenIds && tokenIds.length > 0) {
+      tokenIds.forEach(tokenId => {
+        const { data: pendingData } = usePendingTransfer(tokenId);
+        if (pendingData) {
+          const [from, to, ownerApproved, recipientApproved, timestamp] = pendingData;
+          
+          transfers.push({
+            tokenId: tokenId.toString(),
+            from,
+            to,
+            ownerApproved,
+            recipientApproved,
+            timestamp: Number(timestamp),
+            userRole: from === address ? 'sender' : 'recipient'
+          });
         }
       });
     }

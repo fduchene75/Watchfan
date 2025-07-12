@@ -138,7 +138,7 @@ const NFTCollectionViewer = () => {
             <Link href="/transfers">
               <Button>
                 <ArrowRightLeft className="h-4 w-4" />
-                Voir les transferts
+                Voir les transferts en cours
               </Button>
             </Link>
           </div>

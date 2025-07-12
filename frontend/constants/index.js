@@ -907,6 +907,25 @@ export const contractABI = [
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getTransfersForUser",
+      "outputs": [
+        {
+          "internalType": "uint32[]",
+          "name": "",
+          "type": "uint32[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint32",
           "name": "tokenId",
           "type": "uint32"
@@ -1347,4 +1366,4 @@ export const contractABI = [
       "stateMutability": "view",
       "type": "function"
     }
-  ];
+  ]

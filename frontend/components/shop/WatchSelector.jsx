@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { keccak256, toBytes } from 'viem';
 import { mockWatches, generateIPFSMetadata } from '@/lib/mockWatches';
@@ -19,66 +19,74 @@ const WatchSelector = () => {
   const { address } = useAccount();
   const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error, useTotalSupply } = useWatchfanContract();
   const { mintNFT, resetMint, isProcessing, mintResult } = useMintService(mintWfNFT);
-  const { data: totalSupply } = useTotalSupply();
+  const { data: totalSupply, refetch: refetchTotalSupply } = useTotalSupply();
   const { checkSerialHash, resetValidation, isChecking, exists, error: validationError } = useSerialValidation();
   const [selectedWatch, setSelectedWatch] = useState(null);
   const [ipfsMetadata, setIpfsMetadata] = useState(null);
   const [recipientAddress, setRecipientAddress] = useState('');
   const [currentSerialHash, setCurrentSerialHash] = useState(null);
+  const [selectValue, setSelectValue] = useState("");
 
-  const handleWatchSelect = (watchIndex) => {
+  const handleWatchSelect = useCallback((watchIndex) => {
+    setSelectValue(watchIndex);
     const watch = mockWatches[parseInt(watchIndex)];
     setSelectedWatch(watch);
-    resetMint();
     
-    // Générer automatiquement les metadonnées
-    if (watch) {
-        const metadata = generateIPFSMetadata(watch);
-        setIpfsMetadata(metadata);
-        // On ajouter le Serial Number (qui n'ira pas dans IPFS)
-        const serialHash = keccak256(toBytes(watch.serialNumber));
-        const enrichedMetadata = {
-            ...metadata,
-            serialNumber: watch.serialNumber,
-            serialHash
-        };
-        setIpfsMetadata(enrichedMetadata);   
-        // Vérifier si ce numéro de série existe déjà
-        checkSerialHash(serialHash);     
+    // Générer les métadonnées IPFS
+    const metadata = generateIPFSMetadata(watch);
+    setIpfsMetadata(metadata);
+    
+    // Vérifier si le hash a changé avant de déclencher la validation
+    if (metadata.serialHash !== currentSerialHash) {
+      setCurrentSerialHash(metadata.serialHash);
+      checkSerialHash(metadata.serialHash);
     }
-  };
+  }, [currentSerialHash, checkSerialHash]);
 
-  const handleMintNFT = async () => {
+  const handleMintNFT = useCallback(async () => {
     await mintNFT({
       selectedWatch,
       recipientAddress,
       ipfsMetadata,
       exists
     });
-  };
+  }, [mintNFT, selectedWatch, recipientAddress, ipfsMetadata, exists]);
 
-  const canMint = selectedWatch && ipfsMetadata && recipientAddress && !isProcessing && !isPending && !isConfirming && !exists && !isChecking;
+  const canMint = selectedWatch && 
+    ipfsMetadata && 
+    recipientAddress && 
+    !isProcessing && 
+    !isPending && 
+    !isConfirming && 
+    !exists && 
+    !isChecking &&
+    currentSerialHash;
 
   const getButtonText = () => {
     if (isProcessing) return 'Upload IPFS...';
     if (isPending) return 'Préparation...';
     if (isConfirming) return 'Confirmation...';
     if (isChecking) return 'Vérification...';
-    if (exists) return 'Mint NFT'; // Texte normal même si existe
+    if (exists) return 'NFT déjà minté'; 
     return 'Mint NFT';
   };
 
   // On doit reset après succès (pour bloquer bouton Mint)
   useEffect(() => {
     if (isConfirmed) {
-      // Reset tout après succès
+      // Batch tous les resets ensemble
       setSelectedWatch(null);
+      setSelectValue("");
       setIpfsMetadata(null);
       setRecipientAddress('');
+      setCurrentSerialHash(null);
+      
+      // Appellez les fonctions de reset
       resetMint();
       resetValidation();
+      refetchTotalSupply();
     }
-  }, [isConfirmed, resetMint, resetValidation]);
+  }, [isConfirmed]);
 
   return (
     <div className="space-y-4">
@@ -92,7 +100,7 @@ const WatchSelector = () => {
           <CardTitle>Sélection nouvelle montre avec toutes ses données</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Select onValueChange={handleWatchSelect}>
+          <Select value={selectValue} onValueChange={handleWatchSelect}>
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner une montre" />
             </SelectTrigger>
@@ -122,7 +130,7 @@ const WatchSelector = () => {
       {ipfsMetadata && (
         <Card>
           <CardHeader>
-            <CardTitle>Métadonnées IPFS</CardTitle>
+            <CardTitle>Métadonnées liées à cette montre</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <pre className="text-sm bg-gray-100 p-2 rounded">

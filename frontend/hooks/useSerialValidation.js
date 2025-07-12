@@ -26,6 +26,7 @@ export function useSerialValidation() {
       return;
     }
 
+    // Force l'état pendant le chargement
     setValidationState({
       isChecking: isCheckingExists,
       exists: !!exists,
@@ -41,6 +42,12 @@ export function useSerialValidation() {
   // Fonction pour reset la validation
   const resetValidation = () => {
     setSerialHash(null);
+    // Force le reset de l'état aussi
+    setValidationState({
+      isChecking: false,
+      exists: false,
+      error: null
+    });
   };
 
   return {

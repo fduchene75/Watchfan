@@ -11,11 +11,17 @@ import { CheckCircle, X, Clock, AlertCircle } from 'lucide-react';
 
 const PendingTransfers = () => {
   const { address } = useAccount();
-  const { useTokensByOwner } = useWatchfanContract();
+  const { useTransfersForUser } = useWatchfanContract();
   const { handleApproveReceive, handleCancelTransfer, isProcessing, error, success } = useTransfers();
 
-  // Récupérer tous les tokens de l'utilisateur
-  const { data: userTokens, isLoading: tokensLoading } = useTokensByOwner(address);
+  // Récupérer tous les transferts concernant l'utilisateur
+  const { data: userTokens, isLoading: tokensLoading } = useTransfersForUser(address);
+
+  // DEBUG : logs temporaires
+  console.log("🔍 DEBUG PendingTransfers:");
+  console.log("- address connectée:", address);
+  console.log("- userTokens:", userTokens);
+  console.log("- isLoading:", tokensLoading);
 
   // Composant pour chaque transfert individuel
   const TransferCard = ({ tokenId }) => {
@@ -23,17 +29,31 @@ const PendingTransfers = () => {
     const { data: hasPending } = useHasPendingTransfer(tokenId);
     const { data: pendingData } = usePendingTransfer(tokenId);
 
+    // DEBUG : logs pour chaque token
+    console.log(`🔍 DEBUG Token #${tokenId}:`);
+    console.log("- hasPending:", hasPending);
+    console.log("- pendingData:", pendingData);
+
     // Ne pas afficher si pas de transfert en cours
     if (!hasPending || !pendingData) {
+      console.log(`❌ Token #${tokenId} - pas de transfert en cours`);
       return null;
     }
 
     const [from, to, ownerApproved, recipientApproved, timestamp] = pendingData;
     
+    console.log(`📋 Token #${tokenId} détails:`);
+    console.log("- from:", from);
+    console.log("- to:", to);
+    console.log("- address connectée:", address);
+    
     // Ne montrer que si l'utilisateur connecté est concerné
     if (from !== address && to !== address) {
+      console.log(`❌ Token #${tokenId} - utilisateur pas concerné`);
       return null;
     }
+
+    console.log(`✅ Token #${tokenId} - utilisateur concerné !`);
 
     const isRecipient = to === address;
     const formatDate = (timestamp) => new Date(Number(timestamp) * 1000).toLocaleString();
@@ -85,6 +105,7 @@ const PendingTransfers = () => {
               <Button 
                 onClick={() => handleApproveReceive(tokenId)}
                 disabled={isProcessing}
+                variant="default"
                 size="sm"
               >
                 <CheckCircle className="h-4 w-4" />
@@ -93,9 +114,9 @@ const PendingTransfers = () => {
             )}
             
             <Button 
-              variant="destructive"
               onClick={() => handleCancelTransfer(tokenId)}
               disabled={isProcessing}
+              variant="destructive"
               size="sm"
             >
               <X className="h-4 w-4" />

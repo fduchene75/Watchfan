@@ -1,5 +1,8 @@
 // à défaut d'API constructeur pour récupérer les données des montres via le QR code, on utilise des données factices
 
+import { keccak256, toBytes } from 'viem';
+
+// Données factices des montres
 export const mockWatches = [
   {
     brand: "Rolex",
@@ -24,11 +27,20 @@ export const mockWatches = [
     model: "Nautilus", 
     reference: "5711/1A",
     serialNumber: "P789123456"
-  }
+  },
+  {
+  brand: "Breitling",
+  model: "Navitimer", 
+  reference: "AB0121211B1P1",
+  serialNumber: "B246810121"
+ }
 ];
 
-// Fonction pour générer les métadonnées IPFS (JSON standard NFT)
+// Fonction pour générer les métadonnées IPFS avec serialHash inclus
 export const generateIPFSMetadata = (watch) => {
+  // Générer le hash du numéro de série
+  const serialHash = keccak256(toBytes(watch.serialNumber));
+  
   return {
     name: `${watch.brand} ${watch.model}`,
     description: `Certificat NFT pour ${watch.brand} ${watch.model} ${watch.reference}`,
@@ -36,6 +48,9 @@ export const generateIPFSMetadata = (watch) => {
       { trait_type: "Brand", value: watch.brand },
       { trait_type: "Model", value: watch.model },
       { trait_type: "Reference", value: watch.reference }
-    ]
+    ],
+    // Ajouter les données nécessaires pour le contrat
+    serialNumber: watch.serialNumber,
+    serialHash: serialHash
   };
 };
