@@ -1,15 +1,18 @@
-// Composant pour que les collectionneurs voient leurs NFTs
 'use client';
 
 import { useAccount } from 'wagmi';
 import { useWatchfanContract } from '@/hooks/useWatchfanContract';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ArrowRightLeft } from 'lucide-react';
+import RequestTransferDialog from './RequestTransferDialog';
 
 const NFTCollectionViewer = () => {
   const { address } = useAccount();
-  const { useTokensByOwner, useTokenMetadata } = useWatchfanContract();
+  const { useTokensByOwner, useTokenMetadata, useHasPendingTransfer } = useWatchfanContract();
   
   // Récupérer les tokens de l'utilisateur connecté
   const { data: userTokens, isLoading: tokensLoading, error: tokensError } = useTokensByOwner(address);
@@ -19,6 +22,7 @@ const NFTCollectionViewer = () => {
   // Composant pour afficher chaque NFT individuellement
   const NFTCard = ({ tokenId }) => {
     const { data: contractData, isLoading: metadataLoading } = useTokenMetadata(tokenId);
+    const { data: hasPendingTransfer } = useHasPendingTransfer(tokenId);
     
     if (metadataLoading) {
       return (
@@ -46,7 +50,14 @@ const NFTCollectionViewer = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Montre certifiée #{tokenId}</CardTitle>
+          <CardTitle className="text-lg flex justify-between items-center">
+            Montre #{tokenId}
+            {hasPendingTransfer && (
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                🕐 Transfert en cours
+              </Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 gap-2 text-sm">
@@ -63,9 +74,16 @@ const NFTCollectionViewer = () => {
             </p>
           </div>
           
-          <div className="flex gap-2">
-            <Badge variant="default" className="bg-green-100 text-green-800">✅ Certifié</Badge>
-            <Badge variant="secondary">🔒 Blockchain</Badge>
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <Badge variant="default" className="bg-green-100 text-green-800">✅ Certifiée Watchfan</Badge>
+            </div>
+            
+            {/* Bouton de transfert - désactivé si transfert en cours */}
+            <RequestTransferDialog 
+              tokenId={tokenId} 
+              disabled={hasPendingTransfer}
+            />
           </div>
         </CardContent>
       </Card>
@@ -108,8 +126,26 @@ const NFTCollectionViewer = () => {
   }
 
   return (
-    <div className="space-y-4">
-      {/* En-tête */}
+    <div className="space-y-6">
+      {/* Lien vers la gestion des transferts */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold">Gestion des transferts</h3>
+              <p className="text-sm text-gray-600">Gérez vos demandes de transfert</p>
+            </div>
+            <Link href="/transfers">
+              <Button>
+                <ArrowRightLeft className="h-4 w-4" />
+                Voir les transferts
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Ma collection */}
       <Card>
         <CardHeader>
           <CardTitle>Ma collection NFT</CardTitle>

@@ -1,4 +1,3 @@
-// A défaut d'API constructeur pour récupérer les données des montres via le QR code, on sélectionne parmi des données factices
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -47,7 +46,6 @@ const WatchSelector = () => {
         // Vérifier si ce numéro de série existe déjà
         checkSerialHash(serialHash);     
     }
-
   };
 
   const handleMintNFT = async () => {
@@ -66,7 +64,7 @@ const WatchSelector = () => {
     if (isPending) return 'Préparation...';
     if (isConfirming) return 'Confirmation...';
     if (isChecking) return 'Vérification...';
-    if (exists) return 'Le NFT de cette montre existe déjà';
+    if (exists) return 'Mint NFT'; // Texte normal même si existe
     return 'Mint NFT';
   };
 
@@ -142,13 +140,22 @@ const WatchSelector = () => {
                   onChange={(e) => setRecipientAddress(e.target.value)}
                 />
                 <Button 
-                onClick={handleMintNFT}
-                disabled={!canMint}
-                className="w-full"
-                variant={exists ? "destructive" : "default"}
+                  onClick={handleMintNFT}
+                  disabled={!canMint}
+                  className="w-full"
                 >
-                {getButtonText()}
+                  {getButtonText()}
                 </Button>
+                
+                {/* Message d'erreur si le NFT existe déjà */}
+                {exists && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      ❌ Le NFT de cette montre existe déjà
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             </div>
           </CardContent>

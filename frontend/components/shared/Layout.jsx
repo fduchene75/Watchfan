@@ -1,16 +1,43 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { useUserType } from '@/hooks/useUserType';
 import Header from "./Header";
 import Footer from "./Footer";
 
-const Layout = ({children}) => {
-  return (
-    <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-grow p-5">
-            {children}
-        </main>
-        <Footer />
-    </div>
-  )
-}
+const Layout = ({ children }) => {
+  const pathname = usePathname();
+  const { type: userType, isConnected } = useUserType();
 
-export default Layout
+  // Fonction pour déterminer la couleur de fond selon le contexte
+  const getBackgroundClass = () => {
+    if (!isConnected) {
+      return "bg-gray-100"; // Gris clair pour non connectés
+    }
+
+    if (userType === 'shop') {
+      return "bg-orange-100"; // Orange pour les boutiques
+    }
+
+    if (userType === 'collector') {
+      if (pathname === '/transfers') {
+        return "bg-blue-100"; // Bleu pour la page des transferts
+      }
+      return "bg-green-100"; // Vert pour la collection (accueil)
+    }
+
+    return "bg-gray-100"; // Défaut
+  };
+
+  return (
+    <div className={`min-h-screen flex flex-col ${getBackgroundClass()}`}>
+      <Header />
+      <main className="flex-grow p-5">
+        {children}
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
+export default Layout;
