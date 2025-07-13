@@ -25,8 +25,7 @@ export default function Home() {
 
   // Interface standard pour les collectionneurs avec transferts
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Mes montres certifiées Watchfan</h1>
+    <div className="p-8 pt-2">
       <NFTCollectionViewer />
     </div>
   );

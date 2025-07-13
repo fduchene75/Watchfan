@@ -12,21 +12,21 @@ const Layout = ({ children }) => {
   // Fonction pour déterminer la couleur de fond selon le contexte
   const getBackgroundClass = () => {
     if (!isConnected) {
-      return "bg-gray-100"; // Gris clair pour non connectés
+      return "bg-gray-200"; // Gris clair pour non connectés
     }
 
     if (userType === 'shop') {
-      return "bg-orange-100"; // Orange pour les boutiques
+      return "bg-orange-200"; // Orange pour les boutiques
     }
 
     if (userType === 'collector') {
       if (pathname === '/transfers') {
-        return "bg-blue-100"; // Bleu pour la page des transferts
+        return "bg-blue-200"; // Bleu pour la page des transferts
       }
-      return "bg-green-100"; // Vert pour la collection (accueil)
+      return "bg-green-200"; // Vert pour la collection (accueil)
     }
 
-    return "bg-gray-100"; // Défaut
+    return "bg-gray-200"; // Défaut
   };
 
   return (

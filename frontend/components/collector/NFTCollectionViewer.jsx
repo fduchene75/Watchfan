@@ -12,7 +12,7 @@ import RequestTransferDialog from './RequestTransferDialog';
 
 const NFTCollectionViewer = () => {
   const { address } = useAccount();
-  const { useTokensByOwner, useTokenMetadata, useHasPendingTransfer } = useWatchfanContract();
+  const { useTokensByOwner, useTokenMetadata, useHasPendingTransfer, useTransferHistory } = useWatchfanContract();
   
   // Récupérer les tokens de l'utilisateur connecté
   const { data: userTokens, isLoading: tokensLoading, error: tokensError } = useTokensByOwner(address);
@@ -23,6 +23,7 @@ const NFTCollectionViewer = () => {
   const NFTCard = ({ tokenId }) => {
     const { data: contractData, isLoading: metadataLoading } = useTokenMetadata(tokenId);
     const { data: hasPendingTransfer } = useHasPendingTransfer(tokenId);
+    const { data: transferHistory } = useTransferHistory(tokenId);
     
     if (metadataLoading) {
       return (
@@ -85,6 +86,38 @@ const NFTCollectionViewer = () => {
               disabled={hasPendingTransfer}
             />
           </div>
+
+          {/* Historique des transferts */}
+          <div className="mt-4 border-t border-gray-200 pt-3">
+            <h4 className="text-sm font-medium mb-2 text-gray-700">Historique</h4>
+            {transferHistory && transferHistory.length > 0 ? (
+              <div className="space-y-1">
+                {transferHistory.map((transfer, index) => (
+                  <div key={index} className="text-xs text-gray-600">
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        {transfer.from === '0x0000000000000000000000000000000000000000' ? 'Mint' : 'Transfert'}
+                      </span>
+                      <span>
+                        {transfer.from === '0x0000000000000000000000000000000000000000' 
+                          ? `Créé pour ${transfer.to.slice(0, 6)}...${transfer.to.slice(-4)}`
+                          : `${transfer.from.slice(0, 6)}...${transfer.from.slice(-4)} → ${transfer.to.slice(0, 6)}...${transfer.to.slice(-4)}`
+                        }
+                      </span>
+                      <span className="text-gray-400">
+                        {new Date(Number(transfer.timestamp) * 1000).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">Aucun historique</p>
+            )}
+          </div>
+
         </CardContent>
       </Card>
     );
@@ -127,33 +160,14 @@ const NFTCollectionViewer = () => {
 
   return (
     <div className="space-y-6">
-      {/* Lien vers la gestion des transferts */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="font-semibold">Gestion des transferts</h3>
-              <p className="text-sm text-gray-600">Gérez vos demandes de transfert</p>
-            </div>
-            <Link href="/transfers">
-              <Button>
-                <ArrowRightLeft className="h-4 w-4" />
-                Voir les transferts en cours
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Ma collection */}
       <Card>
-        <CardHeader>
-          <CardTitle>Ma collection NFT</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
+        <CardContent className="p-2">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold">Ma collection NFT</h3>
             <Badge variant="outline">
-              Mes NFTs: {userTokens?.length || 0}
+              {userTokens?.length || 0} NFT{(userTokens?.length || 0) > 1 ? 's' : ''}
             </Badge>
           </div>
         </CardContent>
@@ -176,6 +190,25 @@ const NFTCollectionViewer = () => {
           ))}
         </div>
       )}
+
+      {/* Lien vers la gestion des transferts */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold">Gestion des transferts</h3>
+              <p className="text-sm text-gray-600">Gérez vos demandes de transfert</p>
+            </div>
+            <Link href="/transfers">
+              <Button>
+                <ArrowRightLeft className="h-4 w-4" />
+                Voir les transferts en cours
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
     </div>
   );
 };

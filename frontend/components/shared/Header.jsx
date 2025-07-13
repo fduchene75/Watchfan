@@ -4,7 +4,7 @@ import UserTypeBadge from "./UserTypeBadge";
 
 const Header = () => {
     return (
-        <header className="bg-gray-200 text-black p-5 flex justify-between items-center">
+        <header className="bg-gray-200 text-black py-2 px-5 flex justify-between items-center">
             <div>
                 <Image 
                     src="/logo.jpg" 
