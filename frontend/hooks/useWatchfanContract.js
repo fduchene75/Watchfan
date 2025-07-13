@@ -1,6 +1,7 @@
 // Hook personnalisé pour le contrat (on regroupe toutes les interactions possibles)
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { contractAddress, contractABI } from '@/constants';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function useWatchfanContract() {
  // Hook pour les écritures (transactions)
@@ -10,6 +11,9 @@ export function useWatchfanContract() {
  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
    hash,
  });
+
+ // Pour bug de refresh des tokens détenus après transfert
+ const queryClient = useQueryClient();
 
  // Fonctions de lecture du contrat
  const useReadContractData = (functionName, args = []) => {
@@ -55,14 +59,21 @@ export function useWatchfanContract() {
     useReadContractData('getTransfersForUser', userAddress ? [userAddress] : undefined);
 
  // Fonctions d'écriture (transactions)
- const mintWfNFT = async (recipient, uri, serialHash) => {
-   return await writeContractAsync({
-     address: contractAddress,
-     abi: contractABI,
-     functionName: 'mintWfNFT',
-     args: [recipient, uri, serialHash],
-   });
- };
+  const mintWfNFT = async (recipient, uri, serialHash) => {
+    const result = await writeContractAsync({
+      address: contractAddress,
+      abi: contractABI,
+      functionName: 'mintWfNFT',
+      args: [recipient, uri, serialHash],
+    });
+    
+    // Force le refresh (pour bug affichage des tokens)
+    await queryClient.invalidateQueries({
+      queryKey: ['readContract']
+    });
+    
+    return result;
+  };
 
  const requestTransfer = async (tokenId, to) => {
    return await writeContractAsync({
