@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Frontend Watchfan
 
-## Getting Started
+Interface web pour interagir avec les NFT Watchfan sur la blockchain.
 
-First, run the development server:
+## Technologies
+
+- **Next.js 15.3.5** - Framework React avec App Router
+- **RainbowKit 2.2.8** - Interface de connexion Web3
+- **Wagmi 2.15.6** - Hooks React pour Ethereum 
+- **Viem 2.31.7** - Bibliothèque Ethereum JavaScript
+- **Shadcn/ui** - Composants UI avec Radix
+- **TailwindCSS 4** - Framework CSS avec PostCSS
+- **IPFS client 60.0.1** - Interaction IPFS (simulé en MVP)
+
+## Installation
+
+```bash
+npm install
+```
+
+## Démarrage
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+L'application sera accessible sur [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+frontend/
+├── app/                    # App Router Next.js 15
+│   ├── page.js            # Page d'accueil
+│   ├── transfers/page.js  # Gestion des transferts
+│   ├── layout.js          # Layout principal
+│   ├── globals.css        # Styles globaux Tailwind
+│   └── RainbowKitAndWagmiProvider.jsx
+├── components/
+│   ├── ui/               # Composants Shadcn (dialog, card, etc.)
+│   ├── shared/           # Composants partagés
+│   │   ├── Layout.jsx    # Layout avec couleurs contextuelles
+│   │   ├── Header.jsx    # Navigation principale  
+│   │   ├── Footer.jsx    # Pied de page
+│   │   └── UserTypeBadge.jsx
+│   ├── shop/             # Interface boutique
+│   │   └── WatchSelector.jsx
+│   └── collector/        # Interface collectionneur
+│       ├── NFTCollectionViewer.jsx
+│       └── PendingTransfers.jsx
+├── hooks/                # Hooks personnalisés
+│   ├── useWatchfanContract.js
+│   ├── useUserType.js
+│   ├── useSerialValidation.js
+│   ├── useMintService.js
+│   └── useTransfers.js
+├── lib/                  # Utilitaires et config
+├── constants/            # Constantes du projet
+│   └── index.js          # Adresses et ABI contrats
+├── components.json       # Config Shadcn
+├── jsconfig.json         # Alias de chemin JavaScript
+├── next.config.mjs       # Config Next.js et polyfills Web3
+├── postcss.config.mjs    # Config PostCSS pour Tailwind
+└── package.json          # Dépendances et scripts
+```
 
-## Learn More
+## Fonctionnalités
 
-To learn more about Next.js, take a look at the following resources:
+### Interface adaptative par type d'utilisateur
+- **Fond orange** pour les boutiques autorisées
+- **Fond vert** pour la collection des collectionneurs  
+- **Fond bleu** pour la page des transferts
+- **Badge visuel** indiquant le type d'utilisateur
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Pour les boutiques autorisées
+- Sélection de montres depuis une base simulée (QR code + import données fabricant)
+- Génération automatique de métadonnées pour IPFS
+- Validation des numéros de série uniques
+- Mint de NFT avec destinataire personnalisé
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Pour les collectionneurs
+- Visualisation de la collection personnelle
+- Gestion des transferts avec double validation
+- Interface de demande et d'approbation
+- Historique des transferts
 
-## Deploy on Vercel
+## Configuration technique
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Réseau local Hardhat
+- **RPC** : http://localhost:8545
+- **Chain ID** : 31337
+- **Contrat** : Adresse mise à jour dans `constants/index.js`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Hooks personnalisés
+- `useWatchfanContract` - Toutes les interactions avec le smart contract
+- `useUserType` - Détection automatique boutique/collectionneur
+- `useSerialValidation` - Validation des numéros de série uniques
+- `useMintService` - Service de mint avec gestion d'erreurs complète
+- `useTransfers` - Gestion des transferts avec double validation
+
+### Simulation IPFS
+Les métadonnées de montres sont générées localement via `mockWatches.js` avec structure compatible IPFS pour le MVP.
+
+## Développement
+
+```bash
+# Mode développement
+npm run dev
+
+# Build production  
+npm run build
+
+# Lancer production
+npm start
+
+# Linting
+npm run lint
+```
+
+## Configuration Shadcn
+
+Le projet utilise la configuration "new-york" de Shadcn avec :
+- **Style** : new-york (moderne et épuré)
+- **RSC** : Support React Server Components  
+- **JSX** : Pas de TypeScript (tsx: false)
+- **Base color** : neutral
+- **CSS Variables** : Activées pour thèmes
+- **Icônes** : Lucide React
+- **Alias** : Chemins configurés dans jsconfig.json
