@@ -65,7 +65,7 @@ const NFTCollectionViewer = () => {
             <div><strong>Token ID:</strong> {tokenId}</div>
             <div><strong>Date de certification:</strong> {mintDate}</div>
             <div><strong>Boutique:</strong> <span className="font-mono text-xs">{originalShop}</span></div>
-            <div><strong>Hash série:</strong> <span className="font-mono text-xs">{serialHash}</span></div>
+            <div><strong>Hash numéro de série:</strong> <span className="font-mono text-xs">{serialHash}</span></div>
             <div><strong>URI IPFS:</strong> <span className="font-mono text-xs">{uri}</span></div>
           </div>
           
@@ -130,7 +130,7 @@ const NFTCollectionViewer = () => {
       return;
     }
 
-    // Créer une liste simple avec juste les tokenIds
+    // Créer une liste avec les tokenIds
     const details = userTokens.map((tokenId) => ({
       tokenId: tokenId.toString()
     }));

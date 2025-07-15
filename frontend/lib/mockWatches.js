@@ -49,7 +49,7 @@ export const generateIPFSMetadata = (watch) => {
       { trait_type: "Model", value: watch.model },
       { trait_type: "Reference", value: watch.reference }
     ],
-    // Ajouter les données nécessaires pour le contrat
+    // Et les données nécessaires pour le contrat
     serialNumber: watch.serialNumber,
     serialHash: serialHash
   };

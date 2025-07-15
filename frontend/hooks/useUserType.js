@@ -1,5 +1,4 @@
 // Hook pour déterminer le type d'utilisateur connecté
-// frontend/hooks/useUserType.js
 import { useAccount } from 'wagmi';
 import { useWatchfanContract } from './useWatchfanContract';
 

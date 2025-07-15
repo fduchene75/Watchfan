@@ -7,19 +7,16 @@ export const uploadMetadataToIPFS = async (metadata, watchData) => {
     // Simulation d'un délai d'upload réaliste
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Enrichir les métadonnées avec timestamp et hash
+    // On enrichit les métadonnées avec timestamp et hash
     const enrichedMetadata = {
       ...metadata,
       uploaded_at: new Date().toISOString(),
       serial_hash: watchData.serialHash
     };
     
-    // Générer un hash IPFS simulé mais réaliste
+    // On génère un pseudo hash IPFS 
     const simulatedHash = generateRealisticHash(enrichedMetadata, watchData);
     const ipfsUri = `ipfs://${simulatedHash}`;
-    
-    console.log("✅ [MVP] Metadata uploaded to simulated IPFS:", ipfsUri);
-    console.log("📄 Final metadata:", enrichedMetadata);
     
     return {
       success: true,

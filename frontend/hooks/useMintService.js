@@ -1,3 +1,4 @@
+// Hook pour gérer le workflow complet de mint
 import { useState, useCallback, useEffect } from 'react';
 import { uploadMetadataToIPFS } from '@/lib/ipfsService';
 import { parseContractError } from '@/lib/contractErrors';
@@ -6,7 +7,7 @@ export const useMintService = (mintWfNFT) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mintResult, setMintResult] = useState(null);
 
-  // Ajouter un useEffect qui reset le message après quelques secondes
+  // Reset le message après quelques secondes
   useEffect(() => {
     if (mintResult?.success) {
       const timer = setTimeout(() => {
@@ -20,8 +21,6 @@ export const useMintService = (mintWfNFT) => {
   const mintNFT = useCallback(async ({ selectedWatch, recipientAddress, ipfsMetadata, exists }) => {
     setIsProcessing(true);
     setMintResult(null);
-    
-    console.log("🎯 Début du processus de mint...");
 
     try {
       // 1. Validations préalables
@@ -34,22 +33,15 @@ export const useMintService = (mintWfNFT) => {
       // 2. Préparation des métadonnées pour IPFS
       const { serialNumber, serialHash, ...metadataForIPFS } = ipfsMetadata;
       
-      console.log("📤 Upload des métadonnées vers IPFS...");
-      
       // 3. Upload vers IPFS
       const ipfsResult = await uploadMetadataToIPFS(metadataForIPFS, selectedWatch);
       
       if (!ipfsResult.success) {
         throw new Error("Échec upload IPFS: " + ipfsResult.error);
       }
-
-      console.log("✅ IPFS upload terminé:", ipfsResult.ipfsUri);
-      console.log("🚀 Lancement de la transaction blockchain...");
       
       // 4. Transaction blockchain
       const result = await mintWfNFT(recipientAddress, ipfsResult.ipfsUri, serialHash);
-      
-      console.log("✅ Transaction blockchain lancée:", result);
       
       const successResult = { success: true, result, ipfsUri: ipfsResult.ipfsUri };
       setMintResult(successResult);

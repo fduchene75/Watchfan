@@ -1,3 +1,4 @@
+// Hook pour gérer les transferts
 import { useWatchfanContract } from './useWatchfanContract';
 import { useAccount } from 'wagmi';
 import { useState } from 'react';
@@ -11,9 +12,7 @@ export const useTransfers = () => {
     requestTransfer, 
     approveReceive, 
     cancelTransfer,
-    useHasPendingTransfer,
     usePendingTransfer,
-    useTokensByOwner,
     useTransfersForUser
   } = useWatchfanContract();
 

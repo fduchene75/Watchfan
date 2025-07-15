@@ -26,8 +26,8 @@ export function useSerialValidation() {
       return;
     }
 
-    // Force l'état pendant le chargement
-    setValidationState({
+  // Force l'état pendant le chargement
+  setValidationState({
       isChecking: isCheckingExists,
       exists: !!exists,
       error: checkError
@@ -36,7 +36,7 @@ export function useSerialValidation() {
 
   // Fonction pour vérifier un nouveau serial hash
   const checkSerialHash = (hash) => {
-    setSerialHash(hash); // Changer l'état pour déclencher le hook
+    setSerialHash(hash); // Change l'état pour déclencher le hook
   };
 
   // Fonction pour reset la validation
