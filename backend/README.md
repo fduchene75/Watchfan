@@ -1,13 +1,50 @@
-# Sample Hardhat Project
+# Backend Watchfan
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+Smart contract pour la certification NFT de montres de collection.
 
-Try running some of the following tasks:
+## Installation
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.js
+```bash
+npm install
 ```
+
+## Démarrage
+
+```bash
+# Lancer le réseau local
+npx hardhat node
+
+# Dans un autre terminal - Déployer le contrat
+npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network localhost
+```
+
+## Tests
+
+```bash
+npx hardhat test
+```
+
+## Le contrat
+
+**Watchfan.sol** - NFT ERC721 pour montres avec :
+- Minting réservé aux boutiques autorisées
+- Transferts à double validation (expéditeur + destinataire)
+- Numéros de série uniques
+- Historique des transferts
+
+## Fonctions principales
+
+- `setShopAddress()` - Autoriser une boutique (owner seulement)
+- `mintWfNFT()` - Créer un NFT (boutiques seulement)
+- `requestTransfer()` - Demander un transfert
+- `approveReceive()` - Accepter un transfert
+- `getTokensByOwner()` - Voir ses NFT
+
+Le contrat bloque les transferts directs ERC721 classiques.
+
+## Configuration
+
+- Réseau : Hardhat local (port 8545)
+- Chain ID : 31337
+- Solidity : 0.8.28
+- OpenZeppelin : 5.3.0
