@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAccount } from 'wagmi';
-import { keccak256, toBytes } from 'viem';
 import { mockWatches, generateIPFSMetadata } from '@/lib/mockWatches';
 import { useWatchfanContract } from '@/hooks/useWatchfanContract';
 import { useSerialValidation } from '@/hooks/useSerialValidation';
@@ -16,7 +14,6 @@ import { AlertCircle, CheckCircle } from 'lucide-react';
 import { useMintService } from '@/hooks/useMintService';
 
 const WatchSelector = () => {
-  const { address } = useAccount();
   const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error, useTotalSupply } = useWatchfanContract();
   const { mintNFT, resetMint, isProcessing, mintResult } = useMintService(mintWfNFT);
   const { data: totalSupply, refetch: refetchTotalSupply } = useTotalSupply();
