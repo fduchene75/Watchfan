@@ -1,4 +1,16 @@
-export const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
+// Adresse du contrat selon le réseau
+export const getContractAddress = (chainId) => {
+  switch (chainId) {
+    case 31337: // Hardhat local
+      return "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    case 11155111: // Sepolia
+      return "0x4c1C44baB17Fb56433685c74f4713b7B3ACc6e0f";
+    default:
+      throw new Error('UNSUPPORTED_NETWORK');
+  }
+};
+
 export const contractABI = [
     {
       "inputs": [

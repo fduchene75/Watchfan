@@ -1,6 +1,6 @@
 // Hook personnalisé pour le contrat (on regroupe toutes les interactions possibles)
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { contractAddress, contractABI } from '@/constants';
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { getContractAddress, contractABI } from '@/constants';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function useWatchfanContract() {
@@ -14,6 +14,19 @@ export function useWatchfanContract() {
 
  // Pour bug de refresh des tokens détenus après transfert
  const queryClient = useQueryClient();
+
+ // Récupère l'ID du réseau actuel
+ const chainId = useChainId();
+ 
+ // Récupère l'adresse du contrat selon le réseau
+ let contractAddress;
+ let networkError = false;
+  try {
+    contractAddress = getContractAddress(chainId);
+  } catch (error) {
+    networkError = true;
+    setNetworkError(true);
+  }
 
  // Fonctions de lecture du contrat
  const useReadContractData = (functionName, args = []) => {

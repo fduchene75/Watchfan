@@ -8,7 +8,7 @@ import {
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import { hardhat } from 'wagmi/chains';
+import { hardhat, sepolia } from 'wagmi/chains';
 import {
   QueryClientProvider,
   QueryClient,
@@ -37,7 +37,7 @@ const localChain = {
 const config = getDefaultConfig({
   appName: 'Watchfan',
   projectId: '9db53c307697652817d4b61d699e91ce',
-  chains: [localChain],
+  chains: [localChain, sepolia],
   ssr: true,
 });
 
