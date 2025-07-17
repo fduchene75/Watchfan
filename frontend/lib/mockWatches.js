@@ -33,7 +33,37 @@ export const mockWatches = [
   model: "Navitimer", 
   reference: "AB0121211B1P1",
   serialNumber: "B246810121"
- }
+ },
+ {
+  brand: "Audemars Piguet",
+  model: "Royal Oak", 
+  reference: "15202ST.OO.1240ST.01",
+  serialNumber: "A654321987"
+  },
+  {
+    brand: "Cartier",
+    model: "Santos", 
+    reference: "WSSA0009",
+    serialNumber: "C135792468"
+  },
+  {
+    brand: "Jaeger-LeCoultre",
+    model: "Reverso", 
+    reference: "Q3978480",
+    serialNumber: "J369258147"
+  },
+  {
+    brand: "Vacheron Constantin",
+    model: "Overseas", 
+    reference: "4500V/110A-B126",
+    serialNumber: "V852741963"
+  },
+  {
+    brand: "IWC",
+    model: "Pilot's Watch", 
+    reference: "IW377709",
+    serialNumber: "I741852963"
+  }
 ];
 
 // Fonction pour générer les métadonnées IPFS avec serialHash inclus
