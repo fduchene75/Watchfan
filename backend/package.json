@@ -5,6 +5,7 @@
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.13",
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
     "chai": "^4.5.0",
+    "dotenv": "^16.4.5",
     "hardhat": "^2.25.0",
     "hardhat-gas-reporter": "^2.3.0",
     "mocha": "^11.7.1"
