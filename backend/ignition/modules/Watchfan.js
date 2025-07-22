@@ -6,7 +6,7 @@ const { buildModule } = require("@nomicfoundation/hardhat-ignition/modules");
 module.exports = buildModule("WatchfanModule", (m) => {
   const initialOwner = m.getAccount(0);
   const watchfan = m.contract("Watchfan", [initialOwner]);
+  console.log("Initial owner:", initialOwner);
   return { watchfan };
 });
 
-console.log("Initial owner:", initialOwner);
