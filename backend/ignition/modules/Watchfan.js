@@ -8,3 +8,5 @@ module.exports = buildModule("WatchfanModule", (m) => {
   const watchfan = m.contract("Watchfan", [initialOwner]);
   return { watchfan };
 });
+
+console.log("Initial owner:", initialOwner);
