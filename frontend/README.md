@@ -6,7 +6,7 @@ Interface web pour interagir avec les NFT Watchfan sur la blockchain.
 
 **Application déployée :** [watchfan.vercel.app](https://votre-url-vercel.app)  
 **Réseau :** Sepolia Testnet  
-**Contrat :** [0x4c1C44baB17Fb56433685c74f4713b7B3ACc6e0f](https://sepolia.etherscan.io/address/0x4c1C44baB17Fb56433685c74f4713b7B3ACc6e0f)
+**Contrat :** [Voir constants/index.js]
 
 ### Test rapide
 1. Connecter MetaMask sur Sepolia
