@@ -10,7 +10,7 @@ Watch boutiques create NFT authenticity certificates. Each watch receives a uniq
 
 **Web App:** [watchfan.vercel.app](https://votre-url-vercel.app)  
 **Network:** Sepolia Testnet  
-**Contract:** [View on Etherscan](https://sepolia.etherscan.io/address/0x4c1C44baB17Fb56433685c74f4713b7B3ACc6e0f)
+**Contract:** Address is updated automatically in `frontend/constants/index.js` after deployment
 
 ### Quick Test
 1. Connect MetaMask to Sepolia

@@ -1,30 +1,79 @@
-name: Test Suite
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [main]
 
 jobs:
-  tests:
-    name: Smart Contract Tests
+  lint-test-deploy:
+    name: Lint, Test & Deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Use Node.js 20.11.1
+      - name: Setup Node.js 20.11.1
         uses: actions/setup-node@v4
         with:
           node-version: 20.11.1
 
-      - name: Install dependencies
+      # ========================================
+      # LINT FRONTEND
+      # ========================================
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint Frontend Code
+        working-directory: frontend
+        run: npm run lint
+
+      # ========================================
+      # LINT & TEST BACKEND
+      # ========================================
+      - name: Install Backend Dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Run Tests
+      - name: Lint Solidity Contracts
+        working-directory: backend
+        run: npx solhint 'contracts/**/*.sol'
+
+      - name: Run Smart Contract Tests
         working-directory: backend
         run: npx hardhat test
 
-      - name: Run Coverage
+      - name: Generate Coverage Report
         working-directory: backend
         run: npx hardhat coverage
+
+      # ========================================
+      # DEPLOY CONTRACT TO SEPOLIA
+      # ========================================
+      - name: Deploy Contract to Sepolia
+        working-directory: backend
+        env:
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+        run: |
+          npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia --verify
+
+      # ========================================
+      # EXTRACT CONTRACT ADDRESS & UPDATE FRONTEND
+      # ========================================
+      - name: Extract Contract Address and Update Frontend
+        run: node backend/scripts/extract-contract-address.js
+
+      # ========================================
+      # COMMIT UPDATED ADDRESS (with [skip ci])
+      # ========================================
+      - name: Commit Updated Contract Address
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/constants/index.js
+          git diff --staged --quiet || git commit -m "chore: update contract address [skip ci]"
+          git push

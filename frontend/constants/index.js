@@ -1,11 +1,10 @@
 
-// Adresse du contrat selon le réseau
+// Contract address depends on network
 export const getContractAddress = (chainId) => {
   switch (chainId) {
     case 31337: // Hardhat local
       return "0x5FbDB2315678afecb367f032d93F642f64180aa3";
     case 11155111: // Sepolia
-      // return "0x7824c031Cc6d04B23644E9b5cDAaD4732544C9A0";
       return "0x409a6D8eeF53F85C6065f5B77680ea0B0FcFbe0E";
     default:
       throw new Error('UNSUPPORTED_NETWORK');
