@@ -21,36 +21,36 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
     error WatchfanAlreadyApproved(uint32 tokenId);
     error WatchfanDirectTransferDisabled(uint32 tokenId);
     error WatchfanUnauthorizedCancellation(uint32 tokenId);
-    // Erreurs pour la gestion des boutiques
+    // Shop management errors
     error WatchfanShopAlreadyAuthorized(address shop);
     error WatchfanShopNotAuthorized(address shop);
     error WatchfanUnauthorizedMinting(address sender);
-    // Erreurs pour les numéros de série
+    // Serial number errors
     error WatchfanInvalidSerialHash(bytes32 serialHash);
     error WatchfanSerialHashAlreadyExists(bytes32 serialHash);
 
     // EVENTS
-    /// @notice Événement émis lors de la création d'un NFT
+    /// @notice Event emitted when an NFT is created
     event WatchfanMintedTo(address indexed recipient, uint32 tokenId);
-    /// @notice Événement émis lors du transfert d'un NFT
+    /// @notice Event emitted when an NFT is transferred
     event WatchfanTransferred(address indexed from, address indexed to, uint32 tokenId);
-    /// @notice Evénement pour la double validation (transfert demandé)
+    /// @notice Event for dual validation (transfer requested)
     event TransferRequested(uint32 indexed tokenId, address indexed from, address indexed to);
-    /// @notice Evénement pour la double validation (transfert approuvé par le propriétaire)
+    /// @notice Event for dual validation (transfer approved by owner)
     event TransferApprovedByOwner(uint32 indexed tokenId, address indexed owner);
-    /// @notice Evénement pour la double validation (transfert approuvé par l'acheteur)
+    /// @notice Event for dual validation (transfer approved by recipient)
     event TransferApprovedByRecipient(uint32 indexed tokenId, address indexed recipient);
-    /// @notice Evénement pour la double validation (transfert finalisé)
+    /// @notice Event for dual validation (transfer finalized)
     event TransferExecuted(uint32 indexed tokenId, address indexed from, address indexed to);
-    /// @notice Evénement pour la double validation (transfert annulé)
+    /// @notice Event for dual validation (transfer cancelled)
     event TransferCancelled(uint32 indexed tokenId, address indexed from, address indexed to); 
-    /// @notice Événement pour la gestion des boutiques (whitelisting)
+    /// @notice Event for shop management (whitelisting)
     event ShopAuthorized(address indexed shop, address indexed authorizedBy);
-    /// @notice Événement pour la gestion des boutiques (blacklisting)
+    /// @notice Event for shop management (blacklisting)
     event ShopRevoked(address indexed shop, address indexed revokedBy);       
 
     // TYPES
-    /// @notice Structure pour stocker les transferts en attente
+    /// @notice Structure to store pending transfers
     struct PendingTransfer {
         address from;
         address to;
@@ -58,12 +58,12 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         bool recipientApproved;
         uint64 timestamp;
     }
-    /// @notice Structure pour stocker les métadonnées principales des tokens (les autres sont dans IPFS)
+    /// @notice Structure to store main token metadata (others are in IPFS)
     struct TokenMetadata {
         uint64 purchaseDate;
         address originalShop;
     }
-    /// @notice Structure pour enregistrer les transferts effectués (pour l'historique)
+    /// @notice Structure to record completed transfers (for history)
     struct TransferRecord {
         address from;
         address to;
@@ -71,21 +71,21 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
     }
 
     // STATE VARIABLES
-    /// @dev Le prochain tokenId à mint (débute à 1 pour éviter les confusions avec le token 0)
+    /// @dev Next tokenId to mint (starts at 1 to avoid confusion with token 0)
     uint32 private _nextTokenId = 1;
-    /// @notice Mapping pour les transferts en attente (par tokenId)
+    /// @notice Mapping for pending transfers (by tokenId)
     mapping(uint256 => PendingTransfer) public pendingTransfers;
-    /// @notice Gestion des boutiques autorisées (par adresse)
+    /// @notice Authorized shop management (by address)
     mapping(address => bool) public authorizedShops;
-    /// @notice Gestion des boutiques autorisées (liste complète)
+    /// @notice Authorized shop management (full list)
     address[] public shopAddresses;
-    /// @dev Gestion des numéros de série hashés (tokenId => hash du numéro de série)
+    /// @dev Hashed serial number management (tokenId => serial number hash)
     mapping(uint256 => bytes32) private _tokenSerialHashes;
-    /// @dev Gestion des numéros de série hashés (hash du numéro de série => tokenId)
+    /// @dev Hashed serial number management (serial number hash => tokenId)
     mapping(bytes32 => uint32) private _serialHashToToken;
-    /// @dev Mapping pour les métadonnées (par tokenId)
+    /// @dev Metadata mapping (by tokenId)
     mapping(uint256 => TokenMetadata) private _tokenMetadata;
-    /// @dev Mapping pour l'historique des transferts (par tokenId)
+    /// @dev Transfer history mapping (by tokenId)
     mapping(uint256 => TransferRecord[]) private _transferHistory;
 
     // CONSTRUCTOR
@@ -101,26 +101,26 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
     // FUNCTIONS
     //
 
-    /// @notice Fonction pour autoriser une boutique à minter
+    /// @notice Function to authorize a shop to mint
     function setShopAddress(address shop, bool authorized) public onlyOwner validAddress(shop) {
         
-        // Si on autorise la boutique
+        // If authorizing the shop
         if (authorized) {
-            // Vérifier qu'elle n'est pas déjà autorisée
+            // Check it's not already authorized
             require(!authorizedShops[shop], WatchfanShopAlreadyAuthorized(shop));
             
-            // Autoriser la boutique
+            // Authorize the shop
             authorizedShops[shop] = true;
             shopAddresses.push(shop);
             
             emit ShopAuthorized(shop, msg.sender);
         } 
-        // Si on révoque l'autorisation
+        // If revoking authorization
         else {
-            // Vérifier qu'elle était autorisée
+            // Check it was authorized
             require(authorizedShops[shop], WatchfanShopNotAuthorized(shop));
             
-            // Révoquer l'autorisation
+            // Revoke authorization
             authorizedShops[shop] = false;
             _removeFromShopList(shop);
             
@@ -128,26 +128,26 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         }
     }
 
-    /// @dev Fonction interne pour retirer une boutique de la liste
+    /// @dev Internal function to remove a shop from the list
     function _removeFromShopList(address shop) internal {
         for (uint256 i = 0; i < shopAddresses.length; i++) {
             if (shopAddresses[i] == shop) {
-                // Remplacer par le dernier élément
+                // Replace with last element
                 shopAddresses[i] = shopAddresses[shopAddresses.length - 1];
-                // Supprimer le dernier élément
+                // Remove last element
                 shopAddresses.pop();
                 break;
             }
         }
     }
 
-    /// @notice Fonction pour vérifier si une adresse est une boutique autorisée
+    /// @notice Function to check if an address is an authorized shop
     function isAuthorizedShop(address shop) public view returns (bool) {
         return authorizedShops[shop];
     }
 
-    /// @notice Fonction pour obtenir la liste des boutiques autorisées
-    /// @dev On vérifie le mapping ET le tableau (en cas de désynchronisation)
+    /// @notice Function to get the list of authorized shops
+    /// @dev Check both mapping AND array (in case of desynchronization)
     function getAuthorizedShops() public view returns (address[] memory) {
         uint256 length = shopAddresses.length;
         address[] memory temp = new address[](length);
@@ -161,7 +161,7 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
             }
         }
         
-        // Redimensionner le tableau pour réduire le coût en gas car il peut contenir des adresses vides
+        // Resize array to reduce gas cost as it may contain empty addresses
         assembly {
             mstore(temp, count)
         }
@@ -169,9 +169,9 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         return temp;
     }
 
-    /// @notice Fonction pour mint un NFT : seule une boutique peut mint
+    /// @notice Function to mint an NFT: only a shop can mint
     function mintWfNFT(address recipient, string memory uri, bytes32 serialHash) public validAddress(recipient) nonReentrant {
-        // Vérifier que l'appelant est autorisé
+        // Check that caller is authorized
         require(authorizedShops[msg.sender], WatchfanUnauthorizedMinting(msg.sender));
         
         require(serialHash != bytes32(0), WatchfanInvalidSerialHash(serialHash));
@@ -183,17 +183,17 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         _safeMint(recipient, tokenId);
         _setTokenURI(tokenId, uri);
         
-        // Associer le hash immédiatement
+        // Associate hash immediately
         _tokenSerialHashes[tokenId] = serialHash;
         _serialHashToToken[serialHash] = tokenId;
 
-        // Stocker les principales métadonnées on-chain
+        // Store main metadata on-chain
         _tokenMetadata[tokenId] = TokenMetadata({
             purchaseDate: uint64(block.timestamp),
             originalShop: msg.sender
         });
         
-        // Initialiser l'historique avec le premier "transfert" (mint)
+        // Initialize history with first "transfer" (mint)
         _transferHistory[tokenId].push(TransferRecord({
             from: address(0),
             to: recipient,
@@ -203,37 +203,37 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         emit WatchfanMintedTo(recipient, tokenId);
     }
 
-    /// @notice Fonction pour retrouver un token via le hash de son numéro de série
+    /// @notice Function to find a token via its serial number hash
     function getTokenBySerialHash(bytes32 serialHash) public view returns (uint256) {
         require(serialHash != bytes32(0), WatchfanInvalidSerialHash(serialHash));
         
         uint32 tokenId = _serialHashToToken[serialHash];
         
-        // Vérifier que le token existe
+        // Check that token exists
         require(tokenId != 0, WatchfanInvalidSerialHash(serialHash));
         
         return tokenId;
     }
 
-    /// @notice Fonction pour vérifier un hash de numéro de série
+    /// @notice Function to verify a serial number hash
     function verifySerialNumberHash(uint32 tokenId, bytes32 serialHash) public view returns (bool) {
         require(exists(tokenId), WatchfanTransferNotFound(tokenId));
         return _tokenSerialHashes[tokenId] == serialHash;
     }
 
-    /// @notice Fonction pour obtenir le hash du numéro de série
+    /// @notice Function to get serial number hash
     function getSerialNumberHash(uint32 tokenId) public view returns (bytes32) {
         require(exists(tokenId), WatchfanTransferNotFound(tokenId));
         return _tokenSerialHashes[tokenId];
     }
 
-    /// @notice Fonction pour vérifier si un hash existe déjà
+    /// @notice Function to check if a hash already exists
     function serialHashExists(bytes32 serialHash) public view returns (bool) {
         if (serialHash == bytes32(0)) return false;
         return _serialHashToToken[serialHash] != 0;
     }
 
-    /// @notice Liste des NFTs d'un collectionneur
+    /// @notice List of NFTs owned by a collector
     function getTokensByOwner(address owner) external view returns (uint256[] memory) {
         require(owner != address(0), "Invalid owner address");
         
@@ -241,7 +241,7 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         uint256[] memory tokens = new uint256[](balance);
         uint256 currentIndex = 0;
         
-        // Parcourir tous les tokens mintés
+        // Loop through all minted tokens
         for (uint32 tokenId = 1; tokenId < _nextTokenId && currentIndex < balance; tokenId++) {
             if (_ownerOf(tokenId) == owner) {
                 tokens[currentIndex] = tokenId;
@@ -252,7 +252,7 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         return tokens;
     }
 
-    /// @notice Fonction pour obtenir les métadonnées d'un token
+    /// @notice Function to get token metadata
     function getTokenMetadata(uint32 tokenId) external view returns (
         string memory uri,
         uint64 purchaseDate,
@@ -264,21 +264,21 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         TokenMetadata memory metadata = _tokenMetadata[tokenId];
         
         return (
-            tokenURI(uint256(tokenId)),           // URI IPFS
-            metadata.purchaseDate,       // Timestamp du mint
-            metadata.originalShop,       // Boutique qui a minté
-            getSerialNumberHash(tokenId) // Hash du numéro de série
+            tokenURI(uint256(tokenId)),           // IPFS URI
+            metadata.purchaseDate,       // Mint timestamp
+            metadata.originalShop,       // Shop that minted
+            getSerialNumberHash(tokenId) // Serial number hash
         );
     }
 
-    /// @notice Fonction pour obtenir l'historique des transferts d'un token
+    /// @notice Function to get transfer history of a token
     function getTransferHistory(uint32 tokenId) external view returns (TransferRecord[] memory) {
         require(exists(tokenId), WatchfanTransferNotFound(tokenId));
         return _transferHistory[tokenId];
     }
 
-    /// @notice Fonction pour obtenir l'URI d'un token
-    /// @dev Override pour résoudre l'ambiguïté entre ERC721 et ERC721URIStorage
+    /// @notice Function to get token URI
+    /// @dev Override to resolve ambiguity between ERC721 and ERC721URIStorage
     function tokenURI(uint256 tokenId) public view
         override(ERC721, ERC721URIStorage)
         returns (string memory)
@@ -286,8 +286,8 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         return ERC721URIStorage.tokenURI(tokenId);
     }
 
-    /// @notice Renvoie si true/false une norme d'interface est implémentée
-    /// @dev Override indispensable pour compilation et clarté
+    /// @notice Returns if true/false an interface standard is implemented
+    /// @dev Override required for compilation and clarity
     function supportsInterface(bytes4 interfaceId) public view
         override(ERC721, ERC721URIStorage)
         returns (bool)
@@ -295,35 +295,35 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         return super.supportsInterface(interfaceId);
     }
 
-    /// @notice Fonction pour obtenir le nombre total de tokens mintés
+    /// @notice Function to get total number of minted tokens
     function totalSupply() public view returns (uint256) {
-        return _nextTokenId - 1; // Soustraire 1 car _nextTokenId commence à 1
+        return _nextTokenId - 1; // Subtract 1 because _nextTokenId starts at 1
     }
     
-    /// @notice Fonction pour vérifier si un token existe
+    /// @notice Function to check if a token exists
     function exists(uint32 tokenId) public view returns (bool) {
         return _ownerOf(tokenId) != address(0);
     }
     
-    /// @notice Fonction pour demander un transfert (seul le propriétaire du token peut l'initier)
+    /// @notice Function to request a transfer (only token owner can initiate)
     function requestTransfer(uint32 tokenId, address to) public validAddress(to) {
-        // Vérifier que le token existe
+        // Check that token exists
         require(exists(tokenId), WatchfanTransferNotFound(tokenId));
         
-        // Vérifier que l'appelant est le propriétaire
+        // Check that caller is the owner
         require(ownerOf(tokenId) == msg.sender, WatchfanNotOwner(tokenId));
         
-        // Vérifier qu'il n'y a pas déjà une demande en cours
+        // Check there's no request already in progress
         require(pendingTransfers[tokenId].from == address(0), WatchfanTransferAlreadyExists(tokenId));
         
-        // Pas de transfert à soi-même
+        // No transfer to self
         require(to != msg.sender, WatchfanInvalidAddress(to)); 
         
-        // Créer la demande de transfert
+        // Create transfer request
         pendingTransfers[tokenId] = PendingTransfer({
             from: msg.sender,
             to: to,
-            ownerApproved: true, // Le propriétaire approuve automatiquement en créant la demande
+            ownerApproved: true, // Owner automatically approves by creating request
             recipientApproved: false,
             timestamp: uint64(block.timestamp)
         });
@@ -332,38 +332,38 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         emit TransferApprovedByOwner(tokenId, msg.sender);
     }
 
-    /// @notice Fonction pour que le destinataire accepte le transfert
+    /// @notice Function for recipient to accept transfer
     function approveReceive(uint32 tokenId) public nonReentrant {
         PendingTransfer storage transfer = pendingTransfers[tokenId];
         
-        // Vérifier qu'une demande existe
+        // Check that request exists
         require(transfer.from != address(0), WatchfanTransferNotFound(tokenId));
         
-        // Vérifier que l'appelant est le destinataire
+        // Check that caller is the recipient
         require(transfer.to == msg.sender, WatchfanNotRecipient(tokenId));
         
-        // Vérifier que le destinataire n'a pas déjà approuvé
+        // Check that recipient hasn't already approved
         require(!transfer.recipientApproved, WatchfanAlreadyApproved(tokenId));
         
-        // Marquer l'approbation du destinataire
+        // Mark recipient approval
         transfer.recipientApproved = true;
         
         emit TransferApprovedByRecipient(tokenId, msg.sender);
         
-        // Si les deux parties ont approuvé, exécuter le transfert automatiquement
+        // If both parties approved, execute transfer automatically
         if (transfer.ownerApproved && transfer.recipientApproved) {
             _executeTransfer(uint256(tokenId));
         }
     }
     
-    /// @notice Fonction pour annuler une demande de transfert (propriétaire OU destinataire peuvent annuler)
+    /// @notice Function to cancel a transfer request (owner OR recipient can cancel)
     function cancelTransfer(uint32 tokenId) public {
         PendingTransfer storage transfer = pendingTransfers[tokenId];
         
-        // Vérifier qu'une demande existe
+        // Check that request exists
         require(transfer.from != address(0), WatchfanTransferNotFound(tokenId));
         
-        // Vérifier que l'appelant est soit le propriétaire soit le destinataire
+        // Check that caller is either owner or recipient
         if (transfer.from != msg.sender && transfer.to != msg.sender) {
             revert WatchfanUnauthorizedCancellation(tokenId);
         }
@@ -371,13 +371,13 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         address from = transfer.from;
         address to = transfer.to;
         
-        // Supprimer la demande
+        // Delete request
         delete pendingTransfers[tokenId];
         
         emit TransferCancelled(tokenId, from, to);
     }
 
-    /// @dev Fonction interne pour exécuter le transfert
+    /// @dev Internal function to execute transfer
     function _executeTransfer(uint256 tokenId) internal {
         PendingTransfer storage transfer = pendingTransfers[tokenId];
         
@@ -386,38 +386,38 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         
         uint32 tokenId32 = uint32(tokenId);
 
-        // Vérifier que le propriétaire actuel est toujours le même
+        // Check that current owner is still the same
         require(ownerOf(tokenId) == from, WatchfanNotOwner(tokenId32));
         
-        // Enregistrer dans l'historique AVANT le transfert
+        // Record in history BEFORE transfer
         _transferHistory[tokenId].push(TransferRecord({
             from: from,
             to: to,
             timestamp: uint64(block.timestamp)
         }));
 
-        // Effectuer le transfert AVANT de supprimer la demande
-        // pour que _update() puisse encore vérifier les permissions
+        // Perform transfer BEFORE deleting request
+        // so _update() can still check permissions
         _transfer(from, to, tokenId);
         
-        // Supprimer la demande de transfert APRÈS le transfert
+        // Delete transfer request AFTER transfer
         delete pendingTransfers[tokenId];
         
         emit TransferExecuted(tokenId32, from, to);
         emit WatchfanTransferred(from, to, tokenId32);
     }
 
-    /// @dev Override pour bloquer les transferts directs et forcer la double validation
+    /// @dev Override to block direct transfers and enforce dual validation
     function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
         address from = _ownerOf(tokenId);
         
-        // Permettre les mint (from == address(0))
+        // Allow mints (from == address(0))
         if (from == address(0)) {
             return super._update(to, tokenId, auth);
         }
         
-        // Permettre les transferts internes : vérifier si on est dans _executeTransfer
-        // en vérifiant qu'il existe un transfert en attente validé
+        // Allow internal transfers: check if we're in _executeTransfer
+        // by checking if there's a validated pending transfer
         PendingTransfer storage transfer = pendingTransfers[tokenId];
         if (transfer.from == from && 
             transfer.to == to && 
@@ -426,16 +426,16 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
             return super._update(to, tokenId, auth);
         }
         
-        // Bloquer tous les autres transferts directs
+        // Block all other direct transfers
         revert WatchfanDirectTransferDisabled(uint32(tokenId));
     }
 
-    /// @notice Fonction pour vérifier si un transfert est en attente
+    /// @notice Function to check if transfer is pending
     function hasPendingTransfer(uint32 tokenId) public view returns (bool) {
         return pendingTransfers[tokenId].from != address(0);
     }
     
-    /// @notice Fonction pour obtenir les détails d'un transfert en attente
+    /// @notice Function to get pending transfer details
     function getPendingTransfer(uint32 tokenId) public view returns (
         address from,
         address to,
@@ -453,11 +453,11 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         );
     }
 
-    /// @notice Fonction pour obtenir tous les transferts en cours concernant une adresse
+    /// @notice Function to get all ongoing transfers concerning an address
     function getTransfersForUser(address user) external view returns (uint32[] memory) {
         uint256 count = 0;
         
-        // Premier passage : compter les transferts concernant l'utilisateur
+        // First pass: count transfers concerning the user
         for (uint32 tokenId = 1; tokenId < _nextTokenId; tokenId++) {
             PendingTransfer storage transfer = pendingTransfers[tokenId];
             if (transfer.from == user || transfer.to == user) {
@@ -465,11 +465,11 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
             }
         }
         
-        // Créer le tableau de la bonne taille
+        // Create array of correct size
         uint32[] memory userTransfers = new uint32[](count);
         uint256 currentIndex = 0;
         
-        // Deuxième passage : remplir le tableau
+        // Second pass: fill array
         for (uint32 tokenId = 1; tokenId < _nextTokenId; tokenId++) {
             PendingTransfer storage transfer = pendingTransfers[tokenId];
             if (transfer.from == user || transfer.to == user) {

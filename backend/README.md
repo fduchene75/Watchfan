@@ -1,143 +1,119 @@
 # Backend Watchfan
 
-Smart contract pour la certification NFT de montres de collection.
+Smart contract for watch NFT certification.
 
-## 🚀 Installation
+## 🚀 Setup
 
 ```bash
 npm install
 ```
 
-## 🔧 Démarrage
+## 🔧 Start
 
-### Développement local
+### Local Development
 ```bash
-# Terminal 1 - Lancer le réseau local
+# Terminal 1 - Local network
 npx hardhat node
 
-# Terminal 2 - Déployer le contrat
+# Terminal 2 - Deploy
 npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network localhost
 ```
 
-### Déploiement Sepolia (testnet)
+### Sepolia Deployment
 ```bash
-# Configurer .env avec SEPOLIA_RPC_URL et PRIVATE_KEY
+# Configure .env with SEPOLIA_RPC_URL and PRIVATE_KEY
 npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia
 
-# Vérifier le contrat (optionnel)
+# Verify contract (optional)
 npx hardhat ignition verify deployments/chain-11155111
 ```
 
 ## 🧪 Tests
 
 ```bash
-# Tests complets
-npx hardhat test
-
-# Tests avec couverture
-npx hardhat coverage
-
-# Tests spécifiques
-npx hardhat test --grep "mint"
+npx hardhat test            # Full tests
+npx hardhat coverage        # Coverage
+npx hardhat test --grep "mint"  # Specific tests
 ```
 
-## 📋 Le contrat
+## 📋 Contract
 
-**Watchfan.sol** - NFT ERC721 pour montres avec :
-- **Minting réservé** aux boutiques autorisées
-- **Transferts à double validation** (expéditeur + destinataire)
-- **Numéros de série uniques** anti-contrefaçon
-- **Historique complet** des transferts
-- **Sécurité renforcée** (pas de transferts directs)
+**Watchfan.sol** - ERC721 NFT with:
+- Minting reserved for authorized shops
+- Dual validation transfers (sender + recipient)
+- Unique serial numbers (anti-counterfeiting)
+- Complete transfer history
+- Enhanced security (no direct transfers)
 
-## 🛠️ Fonctions principales
+## 🛠️ Main Functions
 
-### Gestion des boutiques (Owner seulement)
-- `setShopAddress(address, bool)` - Autoriser/révoquer une boutique
-- `getAuthorizedShops()` - Liste des boutiques autorisées
+### Shop Management (Owner only)
+- `setShopAddress(address, bool)` - Authorize/revoke shop
+- `getAuthorizedShops()` - List authorized shops
 
-### Minting (Boutiques autorisées)
-- `mintWfNFT(address, string, string)` - Créer un NFT avec destinataire
-- `isSerialUnique(string)` - Vérifier l'unicité d'un numéro de série
+### Minting (Authorized shops)
+- `mintWfNFT(address, string, string)` - Create NFT with recipient
+- `isSerialUnique(string)` - Check serial uniqueness
 
-### Transferts (Système de double validation)
-- `requestTransfer(uint256, address)` - Demander un transfert
-- `approveOwnerTransfer(uint256)` - Approuver côté propriétaire
-- `approveReceive(uint256)` - Accepter côté destinataire
-- `cancelTransfer(uint256)` - Annuler un transfert
+### Transfers (Dual validation system)
+- `requestTransfer(uint256, address)` - Request transfer
+- `approveOwnerTransfer(uint256)` - Approve as owner
+- `approveReceive(uint256)` - Accept as recipient
+- `cancelTransfer(uint256)` - Cancel transfer
 
-### Consultation
-- `getTokensByOwner(address)` - NFT d'un propriétaire
-- `getTransferHistory(uint256)` - Historique d'un token
-- `tokenURI(uint256)` - Métadonnées d'un token
+### Query
+- `getTokensByOwner(address)` - Owner's NFTs
+- `getTransferHistory(uint256)` - Token history
+- `tokenURI(uint256)` - Token metadata
 
 ## 🌐 Configuration
 
-### Réseaux supportés
+### Networks
 
-| Réseau | Chain ID | RPC | Usage |
-|--------|----------|-----|-------|
-| **Hardhat Local** | 31337 | http://localhost:8545 | Développement |
-| **Sepolia Testnet** | 11155111 | https://sepolia.infura.io/v3/... | Recette |
+| Network | Chain ID | Usage |
+|---------|----------|-------|
+| **Hardhat Local** | 31337 | Development |
+| **Sepolia Testnet** | 11155111 | Staging |
 
-### Variables d'environnement
+### Environment Variables
 
-Créer un fichier `.env` :
+Create `.env` file:
 ```bash
-# Pour déploiement Sepolia
+# For Sepolia deployment
 SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
 PRIVATE_KEY=your_private_key_here
 
-# Pour vérification de contrat
+# For contract verification
 ETHERSCAN_API_KEY=your_etherscan_api_key
 ```
 
-### Technologies utilisées
-- **Solidity** : 0.8.28
-- **Hardhat** : 2.25.0
-- **OpenZeppelin** : 5.3.0
-- **Tests** : Mocha + Chai
-- **Coverage** : Solidity-coverage
+## 🔧 Stack
 
-## 📊 Sécurité
+- Solidity 0.8.28, Hardhat 2.25.0, OpenZeppelin 5.3.0
+- Tests: Mocha + Chai, Coverage: Solidity-coverage
 
-### Mesures implémentées
-- ✅ **Reentrancy Guard** sur les fonctions critiques
-- ✅ **Access Control** avec rôles (Owner, Boutiques)
-- ✅ **Validation des entrées** sur tous les paramètres
-- ✅ **Événements complets** pour traçabilité
-- ✅ **Pas de transferts directs** (sécurité renforcée)
+## 📊 Security
 
-### Audits
-- Tests unitaires complets (90%+ couverture)
-- Validation des patterns OpenZeppelin
-- Vérification des vulnérabilités communes
+- Reentrancy Guard on critical functions
+- Access Control with roles (Owner, Shops)
+- Input validation on all parameters
+- Complete events for traceability
+- No direct transfers (enhanced security)
 
-## 🔗 Déploiements
+## 🔗 Deployment
 
 ### Sepolia Testnet
-- **Adresse :** [Voir constants/index.js](../frontend/constants/index.js)
-- **Explorateur :** [Sepolia Etherscan](https://sepolia.etherscan.io/)
-- **Propriétaire :** Défini lors du déploiement
+- **Address:** [See constants/index.js](../frontend/constants/index.js)
+- **Explorer:** [Sepolia Etherscan](https://sepolia.etherscan.io/)
 
-### Scripts utiles
+### Useful Scripts
 ```bash
-# Compiler le contrat
-npx hardhat compile
-
-# Nettoyer les artifacts
-npx hardhat clean
-
-# Vérifier la syntaxe
-npx hardhat check
-
-# Analyser la taille des contrats
-npx hardhat size-contracts
+npx hardhat compile      # Compile contract
+npx hardhat clean        # Clean artifacts
+npx hardhat check        # Check syntax
 ```
 
 ## 📝 Documentation
 
-- **Tests :** Voir `/test/` pour exemples d'utilisation
-- **Scripts :** Voir `/scripts/` pour déploiement
-- **Configuration :** Voir `hardhat.config.js`
-- **Frontend :** Voir [../frontend/README.md](../frontend/README.md)
+- **Tests:** See `/test/` for usage examples
+- **Frontend:** See [../frontend/README.md](../frontend/README.md)

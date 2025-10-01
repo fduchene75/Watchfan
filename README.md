@@ -1,115 +1,101 @@
-# Watchfan - Certification NFT de Montres
+# Watchfan - Watch NFT Certification
 
-Plateforme de certification blockchain pour montres de collection utilisant des NFT avec système de double validation.
+Blockchain certification platform for collectible watches using NFTs with dual validation system.
 
 ## 🎯 Concept
 
-Watchfan permet aux boutiques horlogères de créer des certificats d'authenticité NFT pour leurs montres. Chaque montre reçoit un NFT unique avec métadonnées dans IPFS et système de transfert sécurisé.
+Watch boutiques create NFT authenticity certificates. Each watch receives a unique NFT with IPFS metadata and secure transfers.
 
-## 🌐 Démo en ligne
+## 🌐 Live Demo
 
-**Application web :** [watchfan.vercel.app](https://votre-url-vercel.app)  
-**Réseau :** Sepolia Testnet (ETH gratuit pour tests)  
-**Smart contract :** [Voir sur Sepolia Etherscan](https://sepolia.etherscan.io/address/0x4c1C44baB17Fb56433685c74f4713b7B3ACc6e0f)
+**Web App:** [watchfan.vercel.app](https://votre-url-vercel.app)  
+**Network:** Sepolia Testnet  
+**Contract:** [View on Etherscan](https://sepolia.etherscan.io/address/0x4c1C44baB17Fb56433685c74f4713b7B3ACc6e0f)
 
-### Test rapide
-1. Connecter MetaMask sur Sepolia
-2. Obtenir des ETH de test : [Sepolia Faucet](https://sepoliafaucet.com/)
-3. Tester les fonctionnalités selon votre type d'utilisateur
+### Quick Test
+1. Connect MetaMask to Sepolia
+2. Get test ETH: [Sepolia Faucet](https://sepoliafaucet.com/)
+3. Test features based on your user type
 
-## 🚀 Démarrage rapide
+## 🚀 Quick Start
 
-### 1. Backend local (Smart contract)
+### Backend (Smart Contract)
 ```bash
 cd backend
 npm install
 
-# Terminal 1 - Réseau local
+# Terminal 1 - Local network
 npx hardhat node
 
-# Terminal 2 - Déploiement 
+# Terminal 2 - Deploy
 npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network localhost
 ```
 
-👉 **Détails complets :** Voir [backend/README.md](backend/README.md)
+👉 Details: [backend/README.md](backend/README.md)
 
-### 2. Frontend local (Interface utilisateur)
+### Frontend (UI)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-L'application est accessible sur http://localhost:3000
+App available at http://localhost:3000
 
-👉 **Détails complets :** Voir [frontend/README.md](frontend/README.md)
+👉 Details: [frontend/README.md](frontend/README.md)
 
-## 🔧 Technologies
+## 🔧 Stack
 
-**Backend :** Solidity 0.8.28, Hardhat, OpenZeppelin, Ignition  
-**Frontend :** Next.js 15, RainbowKit, Wagmi, Viem, Shadcn/ui, TailwindCSS  
-**Déploiement :** Vercel (frontend), Sepolia Testnet (contrat)
+**Backend:** Solidity 0.8.28, Hardhat, OpenZeppelin  
+**Frontend:** Next.js 15, RainbowKit, Wagmi, Viem, Shadcn/ui  
+**Deployment:** Vercel (frontend), Sepolia (contract)
 
-## 📋 Fonctionnalités
+## 📋 Features
 
-### ✅ Smart Contract
-- NFT ERC721 avec système de boutiques autorisées
-- Double validation pour les transferts (expéditeur + destinataire)
-- Numéros de série uniques anti-contrefaçon
-- Historique complet des transferts
-- Sécurité renforcée (pas de transferts directs)
+### Smart Contract
+- ERC721 NFT with authorized boutiques
+- Dual validation transfers (sender + recipient)
+- Unique serial numbers (anti-counterfeiting)
+- Complete transfer history
+- No direct transfers (enhanced security)
 
-### ✅ Interface Web
-- Connexion multi-wallets via RainbowKit
-- Interface adaptative (orange=boutiques, vert=collection, bleu=transferts)
-- Détection automatique du type d'utilisateur
-- Gestion complète des transferts avec double validation
-- Simulation IPFS pour le MVP
-- Déploiement continu via GitHub → Vercel
+### Web Interface
+- Multi-wallet connection via RainbowKit
+- Adaptive UI (orange=boutiques, green=collection, blue=transfers)
+- Automatic user type detection
+- Transfer management with dual validation
+- IPFS simulation for MVP
 
-📖 **Documentation détaillée :** [backend/README.md](backend/README.md) | [frontend/README.md](frontend/README.md)
+## 📝 Usage
 
-## 📝 Utilisation
-
-**Boutiques autorisées :** Connexion → Sélection montre → Mint NFT pour client  
-**Collectionneurs :** Connexion → Visualisation collection → Gestion transferts
+**Boutiques:** Connect → Select watch → Mint NFT  
+**Collectors:** Connect → View collection → Manage transfers
 
 ## 🌐 Configuration
 
-### Développement local
-**Réseau local :** http://localhost:8545 (Chain ID: 31337)  
-**Frontend local :** http://localhost:3000
+### Local Development
+- **Network:** http://localhost:8545 (Chain ID: 31337)
+- **Frontend:** http://localhost:3000
 
-### Production/Recette
-**Réseau :** Sepolia Testnet (Chain ID: 11155111)  
-**Frontend :** Vercel (déploiement automatique depuis GitHub)  
-**IPFS :** Simulation dans la dApp pour le MVP
+### Production
+- **Network:** Sepolia (Chain ID: 11155111)
+- **Frontend:** Vercel (auto-deploy from GitHub)
 
-### Tests et qualité
-**Tests :** `cd backend && npm test`  
-**Linting :** `cd frontend && npm run lint`  
-**Build :** `cd frontend && npm run build`
-
-## 🚀 Déploiement
-
-### Frontend (Vercel)
+### Testing
 ```bash
-# Push automatique vers Vercel
-git push origin main
+cd backend && npm test
+cd frontend && npm run lint
+cd frontend && npm run build
 ```
 
-### Smart Contract (Sepolia)
-```bash
-# Déploiement testnet
-cd backend
-npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia
-```
+## 🚀 Deployment
 
-📋 **Configuration complète :** [backend/README.md](backend/README.md) | [frontend/README.md](frontend/README.md)
+**Frontend:** `git push origin main` (auto-deploys to Vercel)  
+**Contract:** `cd backend && npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia`
 
-## 🔗 Liens utiles
+## 🔗 Links
 
-- **Faucet Sepolia :** https://sepoliafaucet.com/
-- **Etherscan Sepolia :** https://sepolia.etherscan.io/
-- **MetaMask :** Configuration réseau Sepolia
-- **Documentation :** README détaillés par module
+- [Sepolia Faucet](https://sepoliafaucet.com/)
+- [Etherscan Sepolia](https://sepolia.etherscan.io/)
+- [Backend Docs](backend/README.md)
+- [Frontend Docs](frontend/README.md)
