@@ -1,0 +1,22 @@
+{
+  "name": "watchfan",
+  "version": "1.0.0",
+  "description": "Blockchain certification platform for collectible watches using NFTs with dual validation system.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fduchene75/Watchfan.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fduchene75/Watchfan/issues"
+  },
+  "homepage": "https://github.com/fduchene75/Watchfan#readme",
+  "devDependencies": {
+    "hardhat": "^3.0.6"
+  }
+}

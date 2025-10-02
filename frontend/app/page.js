@@ -13,17 +13,17 @@ export default function Home() {
     return <NotConnected />;
   }  
 
-  // Interface spéciale pour les boutiques
+  // Custom interface for authorised shops
   if (userType === 'shop') {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-6">Interface réservée aux boutiques autorisées</h1>
+        <h1 className="text-2xl font-bold mb-6">Limited access to authorised shops</h1>
         <WatchSelector />
       </div>
     );
   }
 
-  // Interface standard pour les collectionneurs avec transferts
+  // Standard interface for collectors
   return (
     <div className="p-8 pt-2">
       <NFTCollectionViewer />
