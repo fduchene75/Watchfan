@@ -13,11 +13,21 @@ export default function Home() {
     return <NotConnected />;
   }  
 
+  // Admin interface
+  if (userType === 'admin') {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-6">Administrator Panel</h1>
+        <p className="text-gray-600">Admin dashboard coming soon...</p>
+      </div>
+    );
+  }
+
   // Custom interface for authorised shops
   if (userType === 'shop') {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-6">Limited access to authorised shops</h1>
+        <h1 className="text-2xl font-bold mb-6">Limited access - Authorised shop</h1>
         <WatchSelector />
       </div>
     );

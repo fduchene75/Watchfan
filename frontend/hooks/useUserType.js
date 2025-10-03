@@ -1,35 +1,39 @@
-// Hook pour déterminer le type d'utilisateur connecté
+// Hook to determine the type of user (admin/shop/collector)
 import { useAccount } from 'wagmi';
 import { useWatchfanContract } from './useWatchfanContract';
 
 export function useUserType() {
   const { address, isConnected } = useAccount();
-  const { useIsAuthorizedShop } = useWatchfanContract();
+  const { useIsAuthorizedShop, useIsAdmin } = useWatchfanContract();
+  const { data: isAuthorizedShop, isLoadingShop } = useIsAuthorizedShop(address);
+  const { data: isAdmin, isLoading: isLoadingAdmin } = useIsAdmin(address);
   
-  // Vérifier si l'adresse connectée est une boutique autorisée
-  const { data: isAuthorizedShop, isLoading } = useIsAuthorizedShop(address);
-  
-  // Déterminer le type d'utilisateur
   const getUserType = () => {
     if (!isConnected || !address) {
-      return { type: 'disconnected', label: 'Non connecté' };
+      return { type: 'disconnected', label: 'Not connected' };
     }
     
-    if (isLoading) {
-      return { type: 'loading', label: 'Vérification...' };
+    if (isLoadingShop || isLoadingAdmin) {
+      return { type: 'loading', label: 'Checking...' };
     }
     
+    if (isAdmin) {
+      return { type: 'admin', label: 'Administrator' };
+    }
+
     if (isAuthorizedShop) {
-      return { type: 'shop', label: 'Boutique' };
+      return { type: 'shop', label: 'Authorised shop' };
     }
     
-    return { type: 'collector', label: 'Collectionneur' };
+    return { type: 'collector', label: 'Watch collector' };
   };
   
   return {
     ...getUserType(),
     isConnected,
     address,
-    isLoading
+    isLoading: isLoadingShop || isLoadingAdmin,
+    isAdmin,
+    isAuthorizedShop
   };
 }
