@@ -9,24 +9,28 @@ const Layout = ({ children }) => {
   const pathname = usePathname();
   const { type: userType, isConnected } = useUserType();
 
-  // Fonction pour déterminer la couleur de fond selon le contexte
+  // Determine background color based on user type
   const getBackgroundClass = () => {
     if (!isConnected) {
-      return "bg-gray-200"; // Gris clair pour non connectés
+      return "bg-gray-200"; // Light gray for unconnected
+    }
+
+    if (userType === 'admin') {
+      return "bg-gray-700"; // Dark gray for admin
     }
 
     if (userType === 'shop') {
-      return "bg-orange-200"; // Orange pour les boutiques
+      return "bg-orange-200"; // Orange for shops
     }
 
     if (userType === 'collector') {
       if (pathname === '/transfers') {
-        return "bg-blue-200"; // Bleu pour la page des transferts
+        return "bg-blue-200"; // Blue for transfers
       }
-      return "bg-green-200"; // Vert pour la collection (accueil)
+      return "bg-green-200"; // Green for main page (collectors)
     }
 
-    return "bg-gray-200"; // Défaut
+    return "bg-gray-200"; // Default
   };
 
   return (

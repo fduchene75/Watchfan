@@ -88,6 +88,8 @@ export function useWatchfanContract() {
   const useTransfersForUser = (userAddress) =>
     useReadContractData('getTransfersForUser', userAddress ? [userAddress] : undefined);
 
+  const useGetAuthorizedShops = () => useReadContractData('getAuthorizedShops');
+
   // Fonctions d'écriture (transactions)
   const mintWfNFT = async (recipient, uri, serialHash) => {
     const result = await writeContractAsync({
@@ -155,6 +157,7 @@ export function useWatchfanContract() {
     useSerialHashExists,
     useGetTokenBySerialHash,
     useTransfersForUser,
+    useGetAuthorizedShops,
 
     // Fonctions d'écriture
     mintWfNFT,

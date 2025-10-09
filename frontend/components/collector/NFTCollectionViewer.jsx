@@ -14,12 +14,12 @@ const NFTCollectionViewer = () => {
   const { address } = useAccount();
   const { useTokensByOwner, useTokenMetadata, useHasPendingTransfer, useTransferHistory } = useWatchfanContract();
   
-  // Récupérer les tokens de l'utilisateur connecté
+  // Fetch user tokens
   const { data: userTokens, isLoading: tokensLoading, error: tokensError } = useTokensByOwner(address);
   
   const [nftDetails, setNftDetails] = useState([]);
 
-  // Composant pour afficher chaque NFT individuellement
+  // Display each NFT individually
   const NFTCard = ({ tokenId }) => {
     const { data: contractData, isLoading: metadataLoading } = useTokenMetadata(tokenId);
     const { data: hasPendingTransfer } = useHasPendingTransfer(tokenId);
@@ -29,7 +29,7 @@ const NFTCollectionViewer = () => {
       return (
         <Card>
           <CardContent className="p-6">
-            <p>Chargement NFT #{tokenId}...</p>
+            <p>Loading NFT #{tokenId}...</p>
           </CardContent>
         </Card>
       );
@@ -39,7 +39,7 @@ const NFTCollectionViewer = () => {
       return (
         <Card>
           <CardContent className="p-6">
-            <p className="text-red-600">Erreur chargement NFT #{tokenId}</p>
+            <p className="text-red-600">Error loading NFT #{tokenId}</p>
           </CardContent>
         </Card>
       );
@@ -52,10 +52,10 @@ const NFTCollectionViewer = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex justify-between items-center">
-            Montre #{tokenId}
+            Watch #{tokenId}
             {hasPendingTransfer && (
               <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                🕐 Transfert en cours
+                🕐 Transfer in progress
               </Badge>
             )}
           </CardTitle>
@@ -63,10 +63,10 @@ const NFTCollectionViewer = () => {
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 gap-2 text-sm">
             <div><strong>Token ID:</strong> {tokenId}</div>
-            <div><strong>Date de certification:</strong> {mintDate}</div>
-            <div><strong>Boutique:</strong> <span className="font-mono text-xs">{originalShop}</span></div>
-            <div><strong>Hash numéro de série:</strong> <span className="font-mono text-xs">{serialHash}</span></div>
-            <div><strong>URI IPFS:</strong> <span className="font-mono text-xs">{uri}</span></div>
+            <div><strong>Certification date:</strong> {mintDate}</div>
+            <div><strong>Shop:</strong> <span className="font-mono text-xs">{originalShop}</span></div>
+            <div><strong>Serial number hash:</strong> <span className="font-mono text-xs">{serialHash}</span></div>
+            <div><strong>IPFS URI:</strong> <span className="font-mono text-xs">{uri}</span></div>
           </div>
           
           <div className="bg-gray-100 p-3 rounded">
@@ -77,19 +77,19 @@ const NFTCollectionViewer = () => {
           
           <div className="flex justify-between items-center">
             <div className="flex gap-2">
-              <Badge variant="default" className="bg-green-100 text-green-800">✅ Certifiée Watchfan</Badge>
+              <Badge variant="default" className="bg-green-100 text-green-800">✅ Watchfan certified</Badge>
             </div>
             
-            {/* Bouton de transfert - désactivé si transfert en cours */}
+            {/* Transfer button - if not already in progress */}
             <RequestTransferDialog 
               tokenId={tokenId} 
               disabled={hasPendingTransfer}
             />
           </div>
 
-          {/* Historique des transferts */}
+          {/* Transfers history */}
           <div className="mt-4 border-t border-gray-200 pt-3">
-            <h4 className="text-sm font-medium mb-2 text-gray-700">Historique</h4>
+            <h4 className="text-sm font-medium mb-2 text-gray-700">History</h4>
             {transferHistory && transferHistory.length > 0 ? (
               <div className="space-y-1">
                 {transferHistory.map((transfer, index) => (
@@ -97,7 +97,7 @@ const NFTCollectionViewer = () => {
 
                     <div className="flex items-center gap-2">
                       <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {transfer.from === '0x0000000000000000000000000000000000000000' ? 'Mint' : 'Transfert'}
+                        {transfer.from === '0x0000000000000000000000000000000000000000' ? 'Mint' : 'Transfer'}
                       </span>
                       <span>
                         {transfer.from === '0x0000000000000000000000000000000000000000' 
@@ -114,7 +114,7 @@ const NFTCollectionViewer = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-500">Aucun historique</p>
+              <p className="text-xs text-gray-500">No history</p>
             )}
           </div>
 
@@ -142,7 +142,7 @@ const NFTCollectionViewer = () => {
     return (
       <Card>
         <CardContent className="p-6">
-          <p>Chargement de vos NFTs...</p>
+          <p>Loading your NFTs...</p>
         </CardContent>
       </Card>
     );
@@ -152,7 +152,7 @@ const NFTCollectionViewer = () => {
     return (
       <Card>
         <CardContent className="p-6">
-          <p className="text-red-600">Erreur lors du chargement: {tokensError.message}</p>
+          <p className="text-red-600">Loading error: {tokensError.message}</p>
         </CardContent>
       </Card>
     );
@@ -165,7 +165,7 @@ const NFTCollectionViewer = () => {
       <Card>
         <CardContent className="p-2">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold">Ma collection NFT</h3>
+            <h3 className="font-semibold">My NFT collection</h3>
             <Badge variant="outline">
               {userTokens?.length || 0} NFT{(userTokens?.length || 0) > 1 ? 's' : ''}
             </Badge>
@@ -177,9 +177,9 @@ const NFTCollectionViewer = () => {
       {nftDetails.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600">Aucun NFT dans votre collection</p>
+            <p className="text-gray-600">No NFT in your collection</p>
             <p className="text-sm text-gray-500 mt-2">
-              Les NFTs qui vous sont envoyés apparaîtront ici
+              NFTs sent to you will appear here
             </p>
           </CardContent>
         </Card>
@@ -191,18 +191,18 @@ const NFTCollectionViewer = () => {
         </div>
       )}
 
-      {/* Lien vers la gestion des transferts */}
+      {/* Link to transfer management */}
       <Card>
         <CardContent className="p-4">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="font-semibold">Gestion des transferts</h3>
-              <p className="text-sm text-gray-600">Gérez vos demandes de transfert</p>
+              <h3 className="font-semibold">Transfer management</h3>
+              <p className="text-sm text-gray-600">Manage your transfer requests</p>
             </div>
             <Link href="/transfers">
               <Button>
                 <ArrowRightLeft className="h-4 w-4" />
-                Voir les transferts en cours
+                View pending transfers
               </Button>
             </Link>
           </div>

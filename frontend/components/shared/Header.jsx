@@ -8,7 +8,7 @@ const Header = () => {
             <div>
                 <Image 
                     src="/logo.jpg" 
-                    alt="Logo de l'application" 
+                    alt="Application logo" 
                     width={169} 
                     height={85} 
                     className="w-auto"

@@ -22,7 +22,7 @@ export function useUserType() {
     }
 
     if (isAuthorizedShop) {
-      return { type: 'shop', label: 'Authorised shop' };
+      return { type: 'shop', label: 'Authorized shop' };
     }
     
     return { type: 'collector', label: 'Watch collector' };

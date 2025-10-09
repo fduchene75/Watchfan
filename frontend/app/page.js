@@ -2,6 +2,7 @@
 import { useAccount } from 'wagmi';
 import { useUserType } from '@/hooks/useUserType';
 import NotConnected from '@/components/shared/NotConnected';
+import AdminDashboard from '@/components/admin/AdminDashboard';
 import WatchSelector from '@/components/shop/WatchSelector';
 import NFTCollectionViewer from '@/components/collector/NFTCollectionViewer';
 
@@ -15,12 +16,7 @@ export default function Home() {
 
   // Admin interface
   if (userType === 'admin') {
-    return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold mb-6">Administrator Panel</h1>
-        <p className="text-gray-600">Admin dashboard coming soon...</p>
-      </div>
-    );
+    return <AdminDashboard />;
   }
 
   // Custom interface for authorised shops
