@@ -81,5 +81,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add frontend/constants/index.js
-          git diff --staged --quiet || git commit -m "chore: update contract address [skip ci]"
-          git push
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update contract address [skip ci]"
+            
+            # Pull with rebase to integrate remote changes
+            git pull --rebase origin main
+            
+            # Push the changes
+            git push origin main
+          fi
