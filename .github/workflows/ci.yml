@@ -65,7 +65,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
         run: |
-          npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia --verify
+          npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia --verify --reset
 
       # ========================================
       # EXTRACT CONTRACT ADDRESS & UPDATE FRONTEND
