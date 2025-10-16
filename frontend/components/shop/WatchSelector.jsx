@@ -140,7 +140,7 @@ const WatchSelector = () => {
               <div className="space-y-2">
                 <Input
                   type="text"
-                  placeholder="Adresse du destinataire (0x...)"
+                  placeholder="Recipient address (0x...)"
                   value={recipientAddress}
                   onChange={(e) => setRecipientAddress(e.target.value)}
                 />
@@ -152,12 +152,12 @@ const WatchSelector = () => {
                   {getButtonText()}
                 </Button>
                 
-                {/* Message d'erreur si le NFT existe déjà */}
+                {/* Error message if NFT already exists */}
                 {exists && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      ❌ Le NFT de cette montre existe déjà
+                      ❌ NFT for this watch already exists
                     </AlertDescription>
                   </Alert>
                 )}
@@ -167,18 +167,18 @@ const WatchSelector = () => {
         </Card>
       )}
 
-      {/* États de transaction */}
+      {/* Transaction states */}
       {isConfirming && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>⏳ En attente de confirmation...</AlertDescription>
+          <AlertDescription>⏳ Awaiting confirmation...</AlertDescription>
         </Alert>
       )}
 
       {isConfirmed && (
         <Alert>
           <CheckCircle className="h-4 w-4" />
-          <AlertDescription>✅ NFT minté avec succès ! Hash: {hash}</AlertDescription>
+          <AlertDescription>✅ NFT minted successfully! Hash: {hash}</AlertDescription>
         </Alert>
       )}
 

@@ -101,7 +101,7 @@ const NFTCollectionViewer = () => {
                       </span>
                       <span>
                         {transfer.from === '0x0000000000000000000000000000000000000000' 
-                          ? `Créé pour ${transfer.to.slice(0, 6)}...${transfer.to.slice(-4)}`
+                          ? `Created for ${transfer.to.slice(0, 6)}...${transfer.to.slice(-4)}`
                           : `${transfer.from.slice(0, 6)}...${transfer.from.slice(-4)} → ${transfer.to.slice(0, 6)}...${transfer.to.slice(-4)}`
                         }
                       </span>
@@ -161,7 +161,7 @@ const NFTCollectionViewer = () => {
   return (
     <div className="space-y-6">
 
-      {/* Ma collection */}
+      {/* My collection */}
       <Card>
         <CardContent className="p-2">
           <div className="flex justify-between items-center">

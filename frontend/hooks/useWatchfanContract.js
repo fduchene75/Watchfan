@@ -1,24 +1,24 @@
-// Hook personnalisé pour le contrat (on regroupe toutes les interactions possibles)
+// Custom hook for the contract (groups all possible interactions)
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
 import { getContractAddress, contractABI } from '@/constants';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function useWatchfanContract() {
-  // Hook pour les écritures (transactions)
+  // Hook for writes (transactions)
   const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
 
-  // Hook pour attendre la confirmation des transactions
+  // Hook to wait for transaction confirmations
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
 
-  // Pour bug de refresh des tokens détenus après transfert
+  // For token refresh bug after transfer
   const queryClient = useQueryClient();
 
-  // Récupère l'ID du réseau actuel
+  // Gets the current network ID
   const chainId = useChainId();
 
-  // Récupère l'adresse du contrat selon le réseau
+  // Gets the contract address based on the network
   let contractAddress;
   let networkError = false;
   try {
@@ -28,7 +28,7 @@ export function useWatchfanContract() {
     setNetworkError(true);
   }
 
-  // Fonctions de lecture du contrat
+  // Contract read functions
   const useReadContractData = (functionName, args = []) => {
     return useReadContract({
       address: contractAddress,
@@ -55,7 +55,7 @@ export function useWatchfanContract() {
     };
   };
 
-  // Fonctions utilitaires de lecture (pour couvrir tous les getters)
+  // Utility read functions (to cover all getters)
   const useTotalSupply = () => useReadContractData('totalSupply');
 
   const useTokensByOwner = (address) =>

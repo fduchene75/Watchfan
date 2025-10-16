@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Watchfan - NFT pour montres",
-  description: "Plateforme de certification NFT pour montres de luxe",
+  title: "Watchfan - NFT for watches",
+  description: "NFT certification platform for luxury watches"
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="fr">
+    <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <RainbowKitAndWagmiProvider>
           <Layout>

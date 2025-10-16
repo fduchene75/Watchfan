@@ -1,8 +1,8 @@
-// à défaut d'API constructeur pour récupérer les données des montres via le QR code, on utilise des données factices
+// Instead of a manufacturer API to retrieve watch data via QR code, we use mock data
 
 import { keccak256, toBytes } from 'viem';
 
-// Données factices des montres
+// Mock watch data
 export const mockWatches = [
   {
     brand: "Rolex",
@@ -66,9 +66,9 @@ export const mockWatches = [
   }
 ];
 
-// Fonction pour générer les métadonnées IPFS avec serialHash inclus
+// Function to generate IPFS metadata with serialHash included
 export const generateIPFSMetadata = (watch) => {
-  // Générer le hash du numéro de série
+  // Generate the serial number hash
   const serialHash = keccak256(toBytes(watch.serialNumber));
   
   return {
@@ -79,7 +79,7 @@ export const generateIPFSMetadata = (watch) => {
       { trait_type: "Model", value: watch.model },
       { trait_type: "Reference", value: watch.reference }
     ],
-    // Et les données nécessaires pour le contrat
+    // And the data needed for the contract
     serialNumber: watch.serialNumber,
     serialHash: serialHash
   };

@@ -1,46 +1,46 @@
-// Fonction centralisée pour parser toutes les erreurs du contrat Watchfan
+// Centralized function to parse all Watchfan contract errors
 export const parseContractError = (error) => {
-  // Erreurs de mint
+  // Mint errors
   if (error.message?.includes('WatchfanSerialHashAlreadyExists')) {
-    return "Ce numéro de série existe déjà. Impossible de minter deux fois la même montre.";
+    return "This serial number already exists. Cannot mint the same watch twice.";
   }
   if (error.message?.includes('WatchfanUnauthorizedMinting')) {
-    return "Vous n'êtes pas autorisé à minter des NFTs. Contactez l'administrateur.";
+    return "You are not authorized to mint NFTs. Contact the administrator.";
   }
   
-  // Erreurs de transfert
+  // Transfer errors
   if (error.message?.includes('WatchfanNotOwner')) {
-    return "Vous n'êtes pas propriétaire de ce NFT.";
+    return "You are not the owner of this NFT.";
   }
   if (error.message?.includes('WatchfanNotRecipient')) {
-    return "Vous n'êtes pas le destinataire de ce transfert.";
+    return "You are not the recipient of this transfer.";
   }
   if (error.message?.includes('WatchfanTransferNotFound')) {
-    return "Aucun transfert en attente trouvé pour ce NFT.";
+    return "No pending transfer found for this NFT.";
   }
   if (error.message?.includes('WatchfanTransferAlreadyExists')) {
-    return "Un transfert est déjà en cours pour ce NFT.";
+    return "A transfer is already in progress for this NFT.";
   }
   if (error.message?.includes('WatchfanAlreadyApproved')) {
-    return "Vous avez déjà approuvé ce transfert.";
+    return "You have already approved this transfer.";
   }
   if (error.message?.includes('WatchfanUnauthorizedCancellation')) {
-    return "Vous n'êtes pas autorisé à annuler ce transfert.";
+    return "You are not authorized to cancel this transfer.";
   }
   if (error.message?.includes('WatchfanDirectTransferDisabled')) {
-    return "Les transferts directs sont désactivés. Utilisez le système de double validation.";
+    return "Direct transfers are disabled. Use the dual validation system.";
   }
   
-  // Erreurs générales
+  // General errors
   if (error.message?.includes('WatchfanInvalidAddress')) {
-    return "Adresse invalide.";
+    return "Invalid address.";
   }
   if (error.message?.includes('User rejected')) {
-    return "Transaction annulée par l'utilisateur.";
+    return "Transaction cancelled by user.";
   }
   if (error.message?.includes('Internal JSON-RPC error')) {
-    return "Erreur de connexion MetaMask. Vérifiez votre réseau et réessayez.";
+    return "MetaMask connection error. Check your network and try again.";
   }
   
-  return error.message || "Erreur inconnue";
+  return error.message || "Unknown error";
 };
