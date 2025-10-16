@@ -4,13 +4,14 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title Watchfan NFT Contract
 /// @author François Duchêne
 /// @notice This contract manages Watchfan NFT shops, token minting and transfers
 /// @dev Implements ERC721 with strict limitations via _update override (no direct transfers or marketplace sales)
-contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
+contract Watchfan is ERC721Enumerable, Ownable, ERC721URIStorage, ReentrancyGuard {
 
     // ERRORS
     error WatchfanInvalidAddress(address addr);
@@ -239,14 +240,10 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         
         uint256 balance = balanceOf(owner);
         uint256[] memory tokens = new uint256[](balance);
-        uint256 currentIndex = 0;
         
-        // Loop through all minted tokens
-        for (uint32 tokenId = 1; tokenId < _nextTokenId && currentIndex < balance; tokenId++) {
-            if (_ownerOf(tokenId) == owner) {
-                tokens[currentIndex] = tokenId;
-                currentIndex++;
-            }
+        // Direct access via ERC721Enumerable
+        for (uint256 i = 0; i < balance; i++) {
+            tokens[i] = tokenOfOwnerByIndex(owner, i);
         }
         
         return tokens;
@@ -289,16 +286,16 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
     /// @notice Returns if true/false an interface standard is implemented
     /// @dev Override required for compilation and clarity
     function supportsInterface(bytes4 interfaceId) public view
-        override(ERC721, ERC721URIStorage)
+        override(ERC721Enumerable, ERC721URIStorage)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
     }
 
-    /// @notice Function to get total number of minted tokens
-    function totalSupply() public view returns (uint256) {
-        return _nextTokenId - 1; // Subtract 1 because _nextTokenId starts at 1
-    }
+    // Useless function (simply use inherited from Enumerable)
+    //function totalSupply() public view returns (uint256) {
+    //    return _nextTokenId - 1; // Subtract 1 because _nextTokenId starts at 1
+    //}
     
     /// @notice Function to check if a token exists
     function exists(uint32 tokenId) public view returns (bool) {
@@ -408,7 +405,9 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
     }
 
     /// @dev Override to block direct transfers and enforce dual validation
-    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+    function _update(address to, uint256 tokenId, address auth) internal 
+    override (ERC721, ERC721Enumerable)
+    returns (address) {
         address from = _ownerOf(tokenId);
         
         // Allow mints (from == address(0))
@@ -428,6 +427,14 @@ contract Watchfan is ERC721, Ownable, ERC721URIStorage, ReentrancyGuard {
         
         // Block all other direct transfers
         revert WatchfanDirectTransferDisabled(uint32(tokenId));
+    }
+
+    /// @dev Override _increaseBalance for ERC721Enumerable compatibility
+    function _increaseBalance(address account, uint128 value) 
+        internal 
+        override(ERC721, ERC721Enumerable) 
+    {
+        super._increaseBalance(account, value);
     }
 
     /// @notice Function to check if transfer is pending
