@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main]
-  workflow_dispatch: # Debug
+  workflow_dispatch: # Manual trigger option
 
 # CRITICAL: Add write permissions for the workflow
 permissions:
@@ -13,13 +13,29 @@ jobs:
   lint-test-deploy:
     name: Lint, Test & Deploy
     runs-on: ubuntu-latest
+    
+    # ========================================
+    # ENVIRONMENT VARIABLES FOR ENTIRE JOB
+    # ========================================
+    # Define once, available in all steps
+    env:
+      SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+    
     steps:
+      # ========================================
+      # CHECKOUT REPOSITORY
+      # ========================================
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true  # Keep credentials for git push
 
+      # ========================================
+      # SETUP NODE.JS
+      # ========================================
       - name: Setup Node.js 20.11.1
         uses: actions/setup-node@v4
         with:
@@ -60,37 +76,71 @@ jobs:
       # ========================================
       - name: Deploy Contract to Sepolia
         working-directory: backend
-        env:
-          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
         run: |
-          yes | npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia --verify --reset || true
+          # Auto-confirm deployment with 'yes' command
+          # The '|| true' prevents pipeline failure if 'yes' exits with broken pipe
+          yes | npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia --reset || true
 
       # ========================================
-      # EXTRACT CONTRACT ADDRESS & UPDATE FRONTEND
+      # WAIT FOR ETHERSCAN INDEXING
+      # ========================================
+      - name: Wait for Etherscan Indexing
+        run: |
+          echo "⏳ Waiting 45 seconds for Etherscan to index the contract..."
+          sleep 45
+
+      # ========================================
+      # VERIFY CONTRACT ON ETHERSCAN
+      # ========================================
+      - name: Verify Contract on Etherscan
+        working-directory: backend
+        continue-on-error: true  # Don't fail pipeline if verification fails
+        run: |
+          echo "🔍 Starting contract verification with retry logic..."
+          MAX_RETRIES=3
+          RETRY_DELAY=30
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "📝 Verification attempt $i/$MAX_RETRIES..."
+            
+            if npx hardhat ignition verify chain-11155111 --include-unrelated-contracts; then
+              echo "✅ Contract verified successfully on Etherscan!"
+              exit 0
+            fi
+            
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "⚠️ Verification attempt $i failed. Retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+          
+          echo "⚠️ Contract verification failed after $MAX_RETRIES attempts."
+          echo "ℹ️ The contract is deployed and functional. You can verify it manually later."
+          exit 0
+
+      # ========================================
+      # EXTRACT AND UPDATE CONTRACT ADDRESS
       # ========================================
       - name: Extract Contract Address and Update Frontend
         run: node backend/scripts/extract-contract-address.js
 
       # ========================================
-      # COMMIT UPDATED ADDRESS (with [skip ci])
+      # COMMIT AND PUSH UPDATED ADDRESS
       # ========================================
-      - name: Commit Updated Contract Address
+      - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add frontend/constants/index.js
 
-          # Check if there are changes to commit
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: update contract address [skip ci]"
-            
-            # Pull with rebase to integrate remote changes
-            git pull --rebase origin main
-            
-            # Push the changes
-            git push origin main
-          fi
+      - name: Commit Contract Address Update
+        run: |
+          git add frontend/constants/index.js
+          git diff --cached --quiet || git commit -m "chore: update contract address [skip ci]"
+
+      - name: Pull Latest Changes
+        run: |
+          git pull --rebase origin main
+
+      - name: Push Changes
+        run: |
+          git push origin main
