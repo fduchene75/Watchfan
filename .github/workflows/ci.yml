@@ -77,9 +77,7 @@ jobs:
       - name: Deploy Contract to Sepolia
         working-directory: backend
         run: |
-          # Auto-confirm deployment with 'yes' command
-          # The '|| true' prevents pipeline failure if 'yes' exits with broken pipe
-          yes | npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia --reset || true
+          npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia
 
       # ========================================
       # WAIT FOR ETHERSCAN INDEXING
