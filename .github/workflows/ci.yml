@@ -82,7 +82,7 @@ jobs:
           ls -la ignition/
           
           echo "🔧 Running Ignition deploy..."
-          npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia
+          yes | npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia
           
           echo "✅ Deployment command completed"
           echo "📂 Directory structure after deployment:"
