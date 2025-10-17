@@ -1,28 +1,91 @@
-// Pour le MVP on simule l'upload IPFS
+// frontend/lib/ipfsService.js
+// Real IPFS implementation using Pinata API
 
+import axios from 'axios';
+
+const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
+const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'https://gateway.pinata.cloud';
+
+// ============================================
+// Upload image file to IPFS via Pinata
+// ============================================
+export const uploadImageToIPFS = async (file) => {
+  try {
+    console.log("📤 Uploading image to IPFS via Pinata...");
+    
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const metadata = JSON.stringify({
+      name: file.name,
+      keyvalues: { type: 'watch-image' }
+    });
+    formData.append('pinataMetadata', metadata);
+
+    const options = JSON.stringify({ cidVersion: 1 });
+    formData.append('pinataOptions', options);
+
+    const response = await axios.post(
+      'https://api.pinata.cloud/pinning/pinFileToIPFS',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${PINATA_JWT}`
+        }
+      }
+    );
+
+    console.log("✅ Image uploaded successfully:", response.data.IpfsHash);
+
+    return {
+      success: true,
+      ipfsHash: response.data.IpfsHash,
+      ipfsUrl: `${PINATA_GATEWAY}/ipfs/${response.data.IpfsHash}`
+    };
+  } catch (error) {
+    console.error("❌ Failed to upload image:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// ============================================
+// Upload metadata JSON to IPFS via Pinata
+// Keeps same signature as MVP version for compatibility
+// ============================================
 export const uploadMetadataToIPFS = async (metadata, watchData) => {
   try {
-    console.log("📤 [MVP SIMULATION] Uploading metadata to IPFS...", metadata);
+    console.log("📤 Uploading metadata to IPFS via Pinata...", metadata);
     
-    // Simulation d'un délai d'upload réaliste
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // On enrichit les métadonnées avec timestamp et hash
+    // Enrich metadata with timestamp and serial hash
     const enrichedMetadata = {
       ...metadata,
       uploaded_at: new Date().toISOString(),
       serial_hash: watchData.serialHash
     };
     
-    // On génère un pseudo hash IPFS 
-    const simulatedHash = generateRealisticHash(enrichedMetadata, watchData);
-    const ipfsUri = `ipfs://${simulatedHash}`;
-    
+    // Upload to Pinata
+    const response = await axios.post(
+      'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+      enrichedMetadata,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${PINATA_JWT}`
+        }
+      }
+    );
+
+    console.log("✅ Metadata uploaded successfully:", response.data.IpfsHash);
+
     return {
       success: true,
-      ipfsHash: simulatedHash,
-      ipfsUri: ipfsUri,
-      pinataUrl: `https://gateway.pinata.cloud/ipfs/${simulatedHash}` // URL réaliste
+      ipfsHash: response.data.IpfsHash,
+      ipfsUri: `ipfs://${response.data.IpfsHash}`,
+      pinataUrl: `${PINATA_GATEWAY}/ipfs/${response.data.IpfsHash}`
     };
     
   } catch (error) {
@@ -34,45 +97,23 @@ export const uploadMetadataToIPFS = async (metadata, watchData) => {
   }
 };
 
-// Générer un hash IPFS réaliste (format Qm...)
-const generateRealisticHash = (metadata, watchData) => {
-  const data = JSON.stringify(metadata) + watchData.serialNumber;
-  
-  // Format IPFS réaliste : Qm + 44 caractères
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let hash = 'Qm';
-  
-  // Créer un hash déterministe pour la même montre
-  for (let i = 0; i < 44; i++) {
-    const charIndex = (data.charCodeAt(i % data.length) * (i + 1)) % chars.length;
-    hash += chars[charIndex];
-  }
-  
-  return hash;
-};
-
-// Récupérer des métadonnées depuis IPFS (simulation)
+// ============================================
+// Retrieve metadata from IPFS via Pinata gateway
+// ============================================
 export const getMetadataFromIPFS = async (ipfsHash) => {
   try {
-    console.log("📥 [MVP] Getting metadata from simulated IPFS:", ipfsHash);
+    console.log("📥 Getting metadata from IPFS via Pinata gateway:", ipfsHash);
     
-    // Simulation d'un délai de récupération
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Remove ipfs:// prefix if present
+    const hash = ipfsHash.replace('ipfs://', '');
     
-    // Simuler des métadonnées récupérées
-    const metadata = {
-      name: "Certificat récupéré",
-      description: "Métadonnées récupérées depuis IPFS simulé",
-      attributes: [
-        { trait_type: "Status", value: "Retrieved" },
-        { trait_type: "Hash Preview", value: ipfsHash.slice(0, 10) + "..." }
-      ],
-      uploaded_at: new Date().toISOString()
-    };
+    const response = await axios.get(`${PINATA_GATEWAY}/ipfs/${hash}`);
+    
+    console.log("✅ Metadata retrieved successfully");
     
     return {
       success: true,
-      metadata
+      metadata: response.data
     };
   } catch (error) {
     console.error("❌ Failed to get metadata:", error);
@@ -83,13 +124,26 @@ export const getMetadataFromIPFS = async (ipfsHash) => {
   }
 };
 
-// Test de connexion simulé
+// ============================================
+// Test Pinata connection
+// ============================================
 export const testPinataConnection = async () => {
-  console.log("🔌 [MVP] Testing simulated IPFS connection...");
-  
-  // Simulation du test
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  console.log("✅ [MVP] Simulated connection successful");
-  return true;
+  try {
+    console.log("🔌 Testing Pinata connection...");
+    
+    const response = await axios.get(
+      'https://api.pinata.cloud/data/testAuthentication',
+      {
+        headers: {
+          'Authorization': `Bearer ${PINATA_JWT}`
+        }
+      }
+    );
+    
+    console.log("✅ Pinata connection successful:", response.data);
+    return true;
+  } catch (error) {
+    console.error("❌ Pinata connection failed:", error);
+    return false;
+  }
 };
