@@ -77,7 +77,35 @@ jobs:
       - name: Deploy Contract to Sepolia
         working-directory: backend
         run: |
+          echo "🚀 Starting deployment to Sepolia..."
+          echo "📂 Current directory structure before deployment:"
+          ls -la ignition/
+          
+          echo "🔧 Running Ignition deploy..."
           npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia
+          
+          echo "✅ Deployment command completed"
+          echo "📂 Directory structure after deployment:"
+          ls -la ignition/
+          
+          if [ -d "ignition/deployments" ]; then
+            echo "📁 Deployments folder exists, listing contents:"
+            ls -la ignition/deployments/
+          else
+            echo "❌ ERROR: ignition/deployments folder was not created!"
+            exit 1
+          fi
+          
+          if [ -d "ignition/deployments/chain-11155111" ]; then
+            echo "✅ Sepolia deployment folder exists!"
+            echo "📄 Files in deployment folder:"
+            ls -la ignition/deployments/chain-11155111/
+            echo "📄 Content of deployed_addresses.json:"
+            cat ignition/deployments/chain-11155111/deployed_addresses.json
+          else
+            echo "❌ ERROR: chain-11155111 folder was not created!"
+            exit 1
+          fi
 
       # ========================================
       # WAIT FOR ETHERSCAN INDEXING
