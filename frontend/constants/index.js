@@ -5,7 +5,7 @@ export const getContractAddress = (chainId) => {
     case 31337: // Hardhat local
       return "0x5FbDB2315678afecb367f032d93F642f64180aa3";
     case 11155111: // Sepolia
-      return "0xfB03B11697d12406529feBcEbaFcE2F10F3869f3";
+      return "0x706F4E2d7D121a1fc27D6cc680Bb0E69a6CCB9A8";
     default:
       throw new Error('UNSUPPORTED_NETWORK');
   }
