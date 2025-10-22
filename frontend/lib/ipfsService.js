@@ -1,4 +1,3 @@
-// frontend/lib/ipfsService.js
 // Real IPFS implementation using Pinata API
 
 import axios from 'axios';
@@ -30,7 +29,6 @@ export const uploadImageToIPFS = async (file) => {
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${PINATA_JWT}`
         }
       }
@@ -47,27 +45,56 @@ export const uploadImageToIPFS = async (file) => {
     console.error("❌ Failed to upload image:", error);
     return {
       success: false,
-      error: error.message
+      error: error.response?.data?.message || error.message
     };
   }
 };
 
 // ============================================
+// Helper function to convert image path to File object
+// ============================================
+export const fetchImageAsFile = async (imagePath) => {
+  try {
+    const response = await fetch(imagePath);
+    const blob = await response.blob();
+    const filename = imagePath.split('/').pop();
+    return new File([blob], filename, { type: blob.type });
+  } catch (error) {
+    console.error("❌ Failed to fetch image:", error);
+    throw error;
+  }
+};
+
+// ============================================
 // Upload metadata JSON to IPFS via Pinata
-// Keeps same signature as MVP version for compatibility
+// This now handles the image upload automatically
 // ============================================
 export const uploadMetadataToIPFS = async (metadata, watchData) => {
   try {
-    console.log("📤 Uploading metadata to IPFS via Pinata...", metadata);
+    console.log("📤 Starting full IPFS upload process...");
     
-    // Enrich metadata with timestamp and serial hash
-    const enrichedMetadata = {
-      ...metadata,
-      uploaded_at: new Date().toISOString(),
-      serial_hash: watchData.serialHash
-    };
+    let enrichedMetadata = { ...metadata };
     
-    // Upload to Pinata
+    // 1. Upload image first if watch has imagePath
+    if (watchData.imagePath) {
+      console.log("📸 Uploading watch image first...");
+      const imageFile = await fetchImageAsFile(watchData.imagePath);
+      const imageResult = await uploadImageToIPFS(imageFile);
+      
+      if (imageResult.success) {
+        enrichedMetadata.image = `ipfs://${imageResult.ipfsHash}`;
+        console.log("✅ Image uploaded:", imageResult.ipfsHash);
+      } else {
+        console.warn("⚠️ Image upload failed, continuing without image");
+      }
+    }
+    
+    // 2. Add timestamp and serial hash
+    enrichedMetadata.uploaded_at = new Date().toISOString();
+    enrichedMetadata.serial_hash = watchData.serialHash;
+    
+    // 3. Upload metadata JSON to Pinata
+    console.log("📤 Uploading metadata JSON to IPFS...");
     const response = await axios.post(
       'https://api.pinata.cloud/pinning/pinJSONToIPFS',
       enrichedMetadata,
@@ -92,7 +119,7 @@ export const uploadMetadataToIPFS = async (metadata, watchData) => {
     console.error("❌ Failed to upload metadata:", error);
     return {
       success: false,
-      error: error.message
+      error: error.response?.data?.message || error.message
     };
   }
 };
