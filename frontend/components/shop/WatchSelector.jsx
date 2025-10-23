@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -13,78 +12,9 @@ import { useSerialValidation } from '@/hooks/useSerialValidation';
 import { useMintService } from '@/hooks/useMintService';
 import { mockWatches, generateIPFSMetadata } from '@/lib/mockWatches';
 import Image from 'next/image';
-
-// ============================================
-// PINATA DEBUG COMPONENT - TEMPORARY
-// ============================================
-function PinataDebug() {
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const checkEnv = () => {
-    const jwt = process.env.NEXT_PUBLIC_PINATA_JWT;
-    const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY;
-    
-    console.log('🔍 Environment check:');
-    console.log('JWT exists:', !!jwt);
-    console.log('JWT length:', jwt?.length || 0);
-    console.log('JWT preview:', jwt?.substring(0, 20) + '...');
-    console.log('Gateway:', gateway);
-    
-    setResult({
-      jwtExists: !!jwt,
-      jwtLength: jwt?.length || 0,
-      jwtPreview: jwt ? jwt.substring(0, 20) + '...' : 'UNDEFINED',
-      gateway: gateway || 'UNDEFINED'
-    });
-  };
-
-  const testConnection = async () => {
-    setLoading(true);
-    try {
-      const { testPinataConnection } = await import('@/lib/ipfsService');
-      const success = await testPinataConnection();
-      setResult(prev => ({ ...prev, connectionSuccess: success }));
-    } catch (error) {
-      console.error('Connection test error:', error);
-      setResult(prev => ({ 
-        ...prev, 
-        connectionSuccess: false, 
-        error: error.message 
-      }));
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="mb-6 p-4 border-2 border-red-500 rounded-lg space-y-4 bg-red-50">
-      <h3 className="text-lg font-bold text-red-700">🔧 Pinata Debug Panel (Remove in production)</h3>
-      
-      <div className="flex gap-2">
-        <button
-          onClick={checkEnv}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-        >
-          Check Environment
-        </button>
-        
-        <button
-          onClick={testConnection}
-          disabled={loading}
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-sm"
-        >
-          {loading ? 'Testing...' : 'Test Connection'}
-        </button>
-      </div>
-
-      {result && (
-        <div className="bg-white p-4 rounded text-xs font-mono border">
-          <pre>{JSON.stringify(result, null, 2)}</pre>
-        </div>
-      )}
-    </div>
-  );
-}
+import { useMintedNFTs } from '@/hooks/useMintedNFTs';
+import MintedNFTItem from './MintedNFTItem';
+import { Loader2 } from 'lucide-react';
 
 // ============================================
 // MAIN WATCH SELECTOR COMPONENT
@@ -97,15 +27,16 @@ const WatchSelector = () => {
   const [recipientAddress, setRecipientAddress] = useState('');
   const [currentSerialHash, setCurrentSerialHash] = useState(null);
   const [selectValue, setSelectValue] = useState("");
-  const [selectKey, setSelectKey] = useState(0);
+  const [cardKey, setCardKey] = useState(0);
 
   // Hooks
   const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error, useTotalSupply } = useWatchfanContract();
   const totalSupplyQuery = useTotalSupply();
   const totalSupply = totalSupplyQuery?.data;
-  const refreshTotalSupply = totalSupplyQuery?.refetch;
   const { mintNFT, resetMint, isProcessing, mintResult } = useMintService(mintWfNFT);
   const { checkSerialHash, resetValidation, isChecking, exists, error: validationError } = useSerialValidation();
+  // Fetch minted NFTs
+  const { mintedNFTs, isLoading: isLoadingNFTs } = useMintedNFTs(totalSupply);
 
   // Handle watch selection
   const handleWatchSelect = useCallback((watchIndex) => {
@@ -120,19 +51,21 @@ const WatchSelector = () => {
     // Check serial hash if changed
     if (metadata.serialHash !== currentSerialHash) {
       setCurrentSerialHash(metadata.serialHash);
-      checkSerialHash(metadata.serialHash);
+      // checkSerialHash will be triggered by useEffect below
     }
-  }, []);
+  }, [currentSerialHash]);
 
   // Check serial hash when it changes - prevent infinite loops
   const lastCheckedHash = useRef(null);
 
   useEffect(() => {
-    if (currentSerialHash && currentSerialHash !== lastCheckedHash.current) {
+    if (currentSerialHash &&
+        currentSerialHash !== lastCheckedHash.current &&
+        !isChecking) {
       lastCheckedHash.current = currentSerialHash;
       checkSerialHash(currentSerialHash);
     }
-  }, [currentSerialHash, checkSerialHash]);
+  }, [currentSerialHash, checkSerialHash, isChecking]);
 
   // Handle mint
   const handleMintNFT = useCallback(async () => {
@@ -165,53 +98,61 @@ const WatchSelector = () => {
     return 'Mint NFT';
   };
 
-  // Reset after success
+  // Reset after success - using refs to avoid dependency issues
+  const hasResetRef = useRef(false);
+
   useEffect(() => {
-    if (isConfirmed) {
-      setSelectedWatch(null);
-      setSelectValue("");
-      setIpfsMetadata(null);
-      setRecipientAddress('');
-      setCurrentSerialHash(null);
+    if (isConfirmed && !hasResetRef.current) {
+      hasResetRef.current = true;
+      
+      // Reset all states in proper order
       lastCheckedHash.current = null;
+      setCurrentSerialHash(null);
+      setIpfsMetadata(null);
+      setSelectedWatch(null);
+      setRecipientAddress('');
+      setSelectValue("");
+      setCardKey(prev => prev + 1);
+      
+      // Call reset functions
       resetMint();
       resetValidation();
-      totalSupplyQuery?.refetch();
-      setSelectKey(prev => prev + 1); // Force Select component remount
+      
+      // Refetch total supply
+      if (totalSupplyQuery?.refetch) {
+        totalSupplyQuery.refetch();
+      }
+      
+      // Reset the flag after a small delay
+      setTimeout(() => {
+        hasResetRef.current = false;
+      }, 100);
     }
-  }, [isConfirmed, resetMint, resetValidation]);
+  }, [isConfirmed]);
 
   return (
     <div className="space-y-4">
-      
-      {/* ============================================ */}
-      {/* DEBUG PANEL - REMOVE IN PRODUCTION */}
-      {/* ============================================ */}
-      <PinataDebug />
-
-      {/* Total Supply Badge */}
-      <Badge variant="outline" className="text-lg p-3">
-        NFTs minted: {totalSupply?.toString() || "0"}
-      </Badge>
 
       {/* Watch Selection */}
-      <Card>
+      <Card key={cardKey}>
         <CardHeader>
-          <CardTitle>Select Watch</CardTitle>
+          <CardTitle>Initiate NFT minting</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Select key={selectKey} value={selectValue} onValueChange={handleWatchSelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a watch" />
-            </SelectTrigger>
-            <SelectContent>
-              {mockWatches.map((watch, index) => (
-                <SelectItem key={index} value={index.toString()}>
-                  {watch.brand} {watch.model} {watch.reference}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        {/* Watch Selection - Native select to avoid Radix UI bug */}
+        <select
+          value={selectValue}
+          onChange={(e) => handleWatchSelect(e.target.value)}
+          className="w-full px-3 py-2 border rounded-md"
+        >
+          <option value="">Select a new watch</option>
+          {mockWatches.map((watch, index) => (
+            <option key={index} value={index.toString()}>
+              {watch.brand} {watch.model} {watch.reference}
+            </option>
+          ))}
+        </select>
 
           {selectedWatch && (
             <div className="border rounded-lg p-4 bg-gray-50">
@@ -363,6 +304,42 @@ const WatchSelector = () => {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Total Supply Badge */}
+      <Badge variant="outline" className="text-lg p-3">
+        NFTs already minted: {totalSupply?.toString() || "0"}
+      </Badge>
+
+      {/* NFT Inventory */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Minted NFTs Inventory</span>
+            <Badge variant="outline" className="text-lg">
+              Total: {totalSupply?.toString() || "0"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingNFTs ? (
+            <div className="flex items-center justify-center py-8 gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-gray-600">Loading NFTs...</span>
+            </div>
+          ) : mintedNFTs.length > 0 ? (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {mintedNFTs.map((nft) => (
+                <MintedNFTItem key={nft.tokenId} nft={nft} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              No NFTs minted yet
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 };
