@@ -14,26 +14,26 @@ const PendingTransfers = () => {
   const { useTransfersForUser } = useWatchfanContract();
   const { handleApproveReceive, handleCancelTransfer, isProcessing, error, success } = useTransfers();
 
-  // Récupérer tous les transferts concernant l'utilisateur
+  // Get all transfers for the user
   const { data: userTokens, isLoading: tokensLoading } = useTransfersForUser(address);
 
-  // Composant pour chaque transfert individuel
+  // Component for each individual transfer
   const TransferCard = ({ tokenId }) => {
     const { useHasPendingTransfer, usePendingTransfer } = useWatchfanContract();
     const { data: hasPending } = useHasPendingTransfer(tokenId);
     const { data: pendingData } = usePendingTransfer(tokenId);
 
-    // Ne pas afficher si pas de transfert en cours
+    // Don't display if no pending transfer
     if (!hasPending || !pendingData) {
-      console.log(`❌ Token #${tokenId} - pas de transfert en cours`);
+      console.log(`❌ Token #${tokenId} - no pending transfer`);
       return null;
     }
 
     const [from, to, ownerApproved, recipientApproved, timestamp] = pendingData;
     
-    // Ne montrer que si l'utilisateur connecté est concerné
+    // Only show if connected user is involved
     if (from !== address && to !== address) {
-      console.log(`❌ Token #${tokenId} - utilisateur pas concerné`);
+      console.log(`❌ Token #${tokenId} - user not involved`);
       return null;
     }
 
@@ -46,16 +46,16 @@ const PendingTransfers = () => {
           <div className="flex justify-between items-start">
             <CardTitle className="text-lg">NFT #{tokenId.toString()}</CardTitle>
             <Badge variant={isRecipient ? "default" : "secondary"}>
-              {isRecipient ? "📥 Reçu" : "📤 Envoyé"}
+              {isRecipient ? "📥 Received" : "📤 Sent"}
             </Badge>
           </div>
         </CardHeader>
         
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-2 text-sm">
-            <div><strong>De:</strong> <span className="font-mono text-xs">{from}</span></div>
-            <div><strong>Vers:</strong> <span className="font-mono text-xs">{to}</span></div>
-            <div><strong>Demandé le:</strong> {formatDate(timestamp)}</div>
+            <div><strong>From:</strong> <span className="font-mono text-xs">{from}</span></div>
+            <div><strong>To:</strong> <span className="font-mono text-xs">{to}</span></div>
+            <div><strong>Requested on:</strong> {formatDate(timestamp)}</div>
           </div>
 
           <div className="space-y-2">
@@ -66,7 +66,7 @@ const PendingTransfers = () => {
                 <Clock className="h-4 w-4 text-yellow-600" />
               )}
               <span className="text-sm">
-                Expéditeur {ownerApproved ? 'a approuvé' : 'doit approuver'}
+                Sender {ownerApproved ? 'has approved' : 'waiting for approval'}
               </span>
             </div>
             
@@ -77,7 +77,7 @@ const PendingTransfers = () => {
                 <Clock className="h-4 w-4 text-yellow-600" />
               )}
               <span className="text-sm">
-                Destinataire {recipientApproved ? 'a approuvé' : 'doit approuver'}
+                Recipient {recipientApproved ? 'has approved' : 'waiting for approval'}
               </span>
             </div>
           </div>
@@ -87,22 +87,20 @@ const PendingTransfers = () => {
               <Button 
                 onClick={() => handleApproveReceive(tokenId)}
                 disabled={isProcessing}
-                variant="default"
-                size="sm"
+                className="flex-1"
               >
-                <CheckCircle className="h-4 w-4" />
-                Accepter
+                {isProcessing ? 'Processing...' : 'Approve & Receive'}
               </Button>
             )}
             
             <Button 
+              variant="destructive" 
               onClick={() => handleCancelTransfer(tokenId)}
               disabled={isProcessing}
-              variant="destructive"
-              size="sm"
+              className="flex-1"
             >
               <X className="h-4 w-4" />
-              {isRecipient ? 'Refuser' : 'Annuler'}
+              {isProcessing ? 'Processing...' : isRecipient ? 'Decline' : 'Cancel'}
             </Button>
           </div>
 
@@ -128,7 +126,7 @@ const PendingTransfers = () => {
     return (
       <Card>
         <CardContent className="p-6">
-          <p>Chargement des transferts en cours...</p>
+          <p>Loading pending transfers...</p>
         </CardContent>
       </Card>
     );
@@ -139,12 +137,12 @@ const PendingTransfers = () => {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Transferts en cours</CardTitle>
+            <CardTitle>Pending Transfers</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600">Aucun transfert en cours</p>
+            <p className="text-gray-600">No pending transfers</p>
           </CardContent>
         </Card>
       </div>
@@ -155,7 +153,7 @@ const PendingTransfers = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Transferts en cours</CardTitle>
+          <CardTitle>Pending Transfers</CardTitle>
         </CardHeader>
       </Card>
 

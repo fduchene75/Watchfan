@@ -23,13 +23,13 @@ const RequestTransferDialog = ({ tokenId, disabled = false }) => {
 
     try {
       await handleRequestTransfer(tokenId, recipientAddress);
-      // Fermer immédiatement après succès
+      // Close immediately after success
       setOpen(false);
       setRecipientAddress('');
       resetMessages();
     } catch (err) {
-      // En cas d'erreur, on garde la modal ouverte pour montrer l'erreur
-      console.error('Erreur lors du transfert:', err);
+      // On error, keep modal open to show error
+      console.error('Transfer error:', err);
     }
   };
 
@@ -50,17 +50,17 @@ const RequestTransferDialog = ({ tokenId, disabled = false }) => {
           disabled={disabled}
         >
           <Send className="h-4 w-4" />
-          Transférer
+          Transfer
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Demander un transfert - NFT #{tokenId}</DialogTitle>
+          <DialogTitle>Request Transfer - NFT #{tokenId}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="recipient">Adresse du destinataire</Label>
+            <Label htmlFor="recipient">Recipient Address</Label>
             <Input
               id="recipient"
               placeholder="0x..."
@@ -86,7 +86,7 @@ const RequestTransferDialog = ({ tokenId, disabled = false }) => {
 
           <div className="bg-blue-50 p-3 rounded">
             <p className="text-sm text-blue-800">
-              ℹ️ Le destinataire devra approuver le transfert pour qu'il soit effectif.
+              ℹ️ The recipient must approve the transfer for it to be completed.
             </p>
           </div>
 
@@ -96,7 +96,7 @@ const RequestTransferDialog = ({ tokenId, disabled = false }) => {
               disabled={!recipientAddress || !recipientAddress.startsWith('0x') || isProcessing}
               className="flex-1"
             >
-              {isProcessing ? 'Envoi...' : 'Demander le transfert'}
+              {isProcessing ? 'Sending...' : 'Request Transfer'}
             </Button>
             <Button 
               type="button" 
@@ -104,7 +104,7 @@ const RequestTransferDialog = ({ tokenId, disabled = false }) => {
               onClick={() => setOpen(false)}
               disabled={isProcessing}
             >
-              Annuler
+              Cancel
             </Button>
           </div>
         </form>

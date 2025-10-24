@@ -14,10 +14,7 @@ jobs:
     name: Lint, Test & Deploy
     runs-on: ubuntu-latest
     
-    # ========================================
-    # ENVIRONMENT VARIABLES FOR ENTIRE JOB
-    # ========================================
-    # Define once, available in all steps
+    # Environment variables for entire job
     env:
       SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
@@ -72,6 +69,23 @@ jobs:
         run: npx hardhat coverage
 
       # ========================================
+      # CHECK EXISTING DEPLOYMENT
+      # ========================================
+      - name: Check Existing Sepolia Deployment
+        id: check_deployment
+        working-directory: backend
+        run: |
+          if [ -f "ignition/deployments/chain-11155111/deployed_addresses.json" ]; then
+            echo "✅ Existing Sepolia deployment found!"
+            echo "📄 Current deployed address:"
+            cat ignition/deployments/chain-11155111/deployed_addresses.json
+            echo "deployment_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ No existing Sepolia deployment found. Will deploy new contract."
+            echo "deployment_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ========================================
       # DEPLOY CONTRACT TO SEPOLIA
       # ========================================
       - name: Deploy Contract to Sepolia
@@ -82,6 +96,7 @@ jobs:
           ls -la ignition/
           
           echo "🔧 Running Ignition deploy..."
+          # Ignition will reuse existing deployment if found
           yes | npx hardhat ignition deploy ./ignition/modules/Watchfan.js --network sepolia
           
           echo "✅ Deployment command completed"
@@ -111,6 +126,7 @@ jobs:
       # WAIT FOR ETHERSCAN INDEXING
       # ========================================
       - name: Wait for Etherscan Indexing
+        if: steps.check_deployment.outputs.deployment_exists == 'false'
         run: |
           echo "⏳ Waiting 45 seconds for Etherscan to index the contract..."
           sleep 45
@@ -151,17 +167,30 @@ jobs:
         run: node backend/scripts/extract-contract-address.js
 
       # ========================================
-      # COMMIT AND PUSH UPDATED ADDRESS
+      # COMMIT ALL CHANGES
       # ========================================
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit Contract Address Update
+      - name: Commit Deployment and Frontend Updates
         run: |
+          echo "📝 Adding deployment and frontend changes..."
+          
+          # Add Sepolia deployment files (CRITICAL: This preserves deployment for next run)
+          git add backend/ignition/deployments/chain-11155111/
+          
+          # Add frontend constants update
           git add frontend/constants/index.js
-          git diff --cached --quiet || git commit -m "chore: update contract address [skip ci]"
+          
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "ℹ️ No changes to commit (deployment was reused)"
+          else
+            echo "✅ Committing changes..."
+            git commit -m "chore: update Sepolia deployment and contract address [skip ci]"
+          fi
 
       - name: Pull Latest Changes
         run: |

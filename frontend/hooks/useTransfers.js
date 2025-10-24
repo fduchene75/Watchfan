@@ -1,4 +1,4 @@
-// Hook pour gérer les transferts
+// Hook to manage transfers
 import { useWatchfanContract } from './useWatchfanContract';
 import { useAccount } from 'wagmi';
 import { useState } from 'react';
@@ -20,7 +20,7 @@ export const useTransfers = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Fonction pour demander un transfert
+  // Function to request a transfer
   const handleRequestTransfer = async (tokenId, recipientAddress) => {
     setIsProcessing(true);
     setError(null);
@@ -28,9 +28,9 @@ export const useTransfers = () => {
 
     try {
       const txHash = await requestTransfer(tokenId, recipientAddress);
-      setSuccess(`Demande de transfert envoyée ! Hash: ${txHash}`);
+      setSuccess(`Transfer request sent! Hash: ${txHash}`);
       
-      // Rafraîchir les données après succès
+      // Refresh data after success
       await queryClient.invalidateQueries({
         queryKey: ['readContract'],
       });
@@ -45,7 +45,7 @@ export const useTransfers = () => {
     }
   };
 
-  // Fonction pour approuver un transfert reçu
+  // Function to approve a received transfer
   const handleApproveReceive = async (tokenId) => {
     setIsProcessing(true);
     setError(null);
@@ -53,9 +53,9 @@ export const useTransfers = () => {
 
     try {
       const txHash = await approveReceive(tokenId);
-      setSuccess(`Transfert approuvé et exécuté ! Hash: ${txHash}`);
+      setSuccess(`Transfer approved and executed! Hash: ${txHash}`);
       
-      // Rafraîchir les données après succès
+      // Refresh data after success
       await queryClient.invalidateQueries({
         queryKey: ['readContract'],
       });
@@ -70,7 +70,7 @@ export const useTransfers = () => {
     }
   };
 
-  // Fonction pour annuler un transfert
+  // Function to cancel a transfer
   const handleCancelTransfer = async (tokenId) => {
     setIsProcessing(true);
     setError(null);
@@ -78,9 +78,9 @@ export const useTransfers = () => {
 
     try {
       const txHash = await cancelTransfer(tokenId);
-      setSuccess(`Transfert annulé ! Hash: ${txHash}`);
+      setSuccess(`Transfer cancelled! Hash: ${txHash}`);
       
-      // Rafraîchir les données après succès
+      // Refresh data after success
       await queryClient.invalidateQueries({
         queryKey: ['readContract'],
       });
@@ -95,49 +95,21 @@ export const useTransfers = () => {
     }
   };
 
-  // Fonction pour récupérer tous les transferts concernant l'utilisateur
-  const getMyTransfers = () => {
-    const { data: tokenIds } = useTransfersForUser(address);
-    const transfers = [];
-
-    if (tokenIds && tokenIds.length > 0) {
-      tokenIds.forEach(tokenId => {
-        const { data: pendingData } = usePendingTransfer(tokenId);
-        if (pendingData) {
-          const [from, to, ownerApproved, recipientApproved, timestamp] = pendingData;
-          
-          transfers.push({
-            tokenId: tokenId.toString(),
-            from,
-            to,
-            ownerApproved,
-            recipientApproved,
-            timestamp: Number(timestamp),
-            userRole: from === address ? 'sender' : 'recipient'
-          });
-        }
-      });
-    }
-
-    return transfers;
-  };
-
+  // Function to reset messages
   const resetMessages = () => {
     setError(null);
     setSuccess(null);
   };
 
   return {
-    // Actions
     handleRequestTransfer,
     handleApproveReceive,
     handleCancelTransfer,
-    getMyTransfers,
-    resetMessages,
-    
-    // État
     isProcessing,
     error,
-    success
+    success,
+    resetMessages,
+    usePendingTransfer,
+    useTransfersForUser
   };
 };

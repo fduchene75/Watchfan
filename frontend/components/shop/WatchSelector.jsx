@@ -318,7 +318,7 @@ const WatchSelector = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Minted NFTs Inventory</span>
+            <span>Minted NFTs Inventory (all shops)</span>
             <Badge variant="outline" className="text-lg">
               Total: {mintedNFTs?.length || 0}
             </Badge>
