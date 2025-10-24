@@ -6,12 +6,33 @@ import PendingTransfers from '@/components/collector/PendingTransfers';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function TransfersPage() {
   const { isConnected } = useAccount();
   const { type: userType, isLoading } = useUserType();
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Show nothing while wallet connection is being checked
+  // Wait for component to mount on client side before checking connection
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Show loading while component is mounting (prevents hydration mismatch)
+  if (!isMounted) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Now we're mounted, check wallet connection
   if (!isConnected) {
     return <NotConnected />;
   }

@@ -1,16 +1,32 @@
 // Hook to determine the user type (admin/shop/collector)
 import { useAccount } from 'wagmi';
 import { useWatchfanContract } from './useWatchfanContract';
+import { useEffect, useState } from 'react';
 
 export function useUserType() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isConnecting } = useAccount();
   const { useIsAuthorizedShop, useIsAdmin } = useWatchfanContract();
+  const [isMounted, setIsMounted] = useState(false);
   
-  // Only query contract if connected
+  // Wait for component to mount on client side
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+  // Only query contract if connected and mounted
   const { data: isAuthorizedShop, isLoading: isLoadingShop } = useIsAuthorizedShop(address);
   const { data: isAdmin, isLoading: isLoadingAdmin } = useIsAdmin(address);
   
   const getUserType = () => {
+    // Not mounted yet - wait for client hydration
+    if (!isMounted) {
+      return { 
+        type: 'loading', 
+        label: 'Loading...',
+        isLoading: true 
+      };
+    }
+
     // Not connected case
     if (!isConnected || !address) {
       return { 
@@ -20,8 +36,8 @@ export function useUserType() {
       };
     }
     
-    // Loading case - still fetching data from contract
-    if (isLoadingShop || isLoadingAdmin) {
+    // Still connecting or loading contract data
+    if (isConnecting || isLoadingShop || isLoadingAdmin) {
       return { 
         type: 'loading', 
         label: 'Checking...',
@@ -59,7 +75,7 @@ export function useUserType() {
   
   return {
     ...typeData,
-    isConnected,
+    isConnected: isMounted && isConnected,
     address,
     isAdmin,
     isAuthorizedShop
