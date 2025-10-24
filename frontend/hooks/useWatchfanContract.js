@@ -25,7 +25,6 @@ export function useWatchfanContract() {
     contractAddress = getContractAddress(chainId);
   } catch (error) {
     networkError = true;
-    setNetworkError(true);
   }
 
   // Contract read functions
@@ -90,7 +89,7 @@ export function useWatchfanContract() {
 
   const useGetAuthorizedShops = () => useReadContractData('getAuthorizedShops');
 
-  // Fonctions d'écriture (transactions)
+  // Write functions (transactions)
   const mintWfNFT = async (recipient, uri, serialHash) => {
     const result = await writeContractAsync({
       address: contractAddress,
@@ -99,7 +98,7 @@ export function useWatchfanContract() {
       args: [recipient, uri, serialHash],
     });
 
-    // Force le refresh (pour bug affichage des tokens)
+    // Force refresh (for token display bug)
     await queryClient.invalidateQueries({
       queryKey: ['readContract']
     });
@@ -144,7 +143,7 @@ export function useWatchfanContract() {
   };
 
   return {
-    // Hooks de lecture
+    // Read hooks
     useIsAdmin,
     useTotalSupply,
     useTokensByOwner,
@@ -159,14 +158,14 @@ export function useWatchfanContract() {
     useTransfersForUser,
     useGetAuthorizedShops,
 
-    // Fonctions d'écriture
+    // Write functions
     mintWfNFT,
     requestTransfer,
     approveReceive,
     cancelTransfer,
     setShopAddress,
 
-    // États des transactions
+    // Transaction states
     isPending,
     isConfirming,
     isConfirmed,

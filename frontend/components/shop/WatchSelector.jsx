@@ -35,8 +35,9 @@ const WatchSelector = () => {
   const totalSupply = totalSupplyQuery?.data;
   const { mintNFT, resetMint, isProcessing, mintResult } = useMintService(mintWfNFT);
   const { checkSerialHash, resetValidation, isChecking, exists, error: validationError } = useSerialValidation();
-  // Fetch minted NFTs
-  const { mintedNFTs, isLoading: isLoadingNFTs } = useMintedNFTs(totalSupply);
+  
+  // Fetch minted NFTs - NEW: no parameter needed
+  const { nfts: mintedNFTs, isLoading: isLoadingNFTs, refetch: refetchNFTs } = useMintedNFTs();
 
   // Handle watch selection
   const handleWatchSelect = useCallback((watchIndex) => {
@@ -118,9 +119,12 @@ const WatchSelector = () => {
       resetMint();
       resetValidation();
       
-      // Refetch total supply
+      // Refetch data
       if (totalSupplyQuery?.refetch) {
         totalSupplyQuery.refetch();
+      }
+      if (refetchNFTs) {
+        refetchNFTs();
       }
       
       // Reset the flag after a small delay
@@ -128,7 +132,7 @@ const WatchSelector = () => {
         hasResetRef.current = false;
       }, 100);
     }
-  }, [isConfirmed]);
+  }, [isConfirmed, resetMint, resetValidation, refetchNFTs, totalSupplyQuery]);
 
   return (
     <div className="space-y-4">
@@ -316,7 +320,7 @@ const WatchSelector = () => {
           <CardTitle className="flex items-center justify-between">
             <span>Minted NFTs Inventory</span>
             <Badge variant="outline" className="text-lg">
-              Total: {totalSupply?.toString() || "0"}
+              Total: {mintedNFTs?.length || 0}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -326,7 +330,7 @@ const WatchSelector = () => {
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-gray-600">Loading NFTs...</span>
             </div>
-          ) : mintedNFTs.length > 0 ? (
+          ) : mintedNFTs && mintedNFTs.length > 0 ? (
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {mintedNFTs.map((nft) => (
                 <MintedNFTItem key={nft.tokenId} nft={nft} />

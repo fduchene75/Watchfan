@@ -2,8 +2,20 @@
 const nextConfig = {
   reactStrictMode: true,
   
+  // Configuration for external images (IPFS via Pinata gateway)
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'gateway.pinata.cloud',
+        port: '',
+        pathname: '/ipfs/**',
+      },
+    ],
+  },
+  
   webpack: (config, { isServer }) => {
-    // Polyfills pour les bibliothèques Web3 côté client
+    // Polyfills for Web3 libraries on client side
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -23,7 +35,7 @@ const nextConfig = {
       };
     }
 
-    // Exclure les modules problématiques du bundling côté serveur
+    // Exclude problematic modules from server-side bundling
     config.externals = config.externals || [];
     if (isServer) {
       config.externals.push({
@@ -35,7 +47,7 @@ const nextConfig = {
     return config;
   },
 
-  // Configuration pour éviter les erreurs de chunks
+  // Configuration to avoid chunk errors
   experimental: {
     optimizePackageImports: ['@rainbow-me/rainbowkit', 'wagmi', 'viem'],
   },

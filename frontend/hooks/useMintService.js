@@ -1,4 +1,4 @@
-// Hook to manage the complete mint workflow
+// Hook to handle the complete mint workflow
 import { useState, useCallback, useEffect } from 'react';
 import { uploadMetadataToIPFS } from '@/lib/ipfsService';
 import { parseContractError } from '@/lib/contractErrors';
@@ -26,7 +26,7 @@ export const useMintService = (mintWfNFT) => {
       // 1. Pre-validations
       if (!selectedWatch) throw new Error("No watch selected");
       if (!recipientAddress) throw new Error("Recipient address required");
-      if (!ipfsMetadata) throw new Error("Missing metadata");
+      if (!ipfsMetadata) throw new Error("Metadata missing");
       if (exists) throw new Error("This serial number is already minted");
       if (!/^0x[a-fA-F0-9]{40}$/.test(recipientAddress)) throw new Error("Invalid address format");
 
