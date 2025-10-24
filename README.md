@@ -64,12 +64,21 @@ App available at http://localhost:3000
 - Adaptive UI (orange=boutiques, green=collection, blue=transfers)
 - Automatic user type detection
 - Transfer management with dual validation
-- IPFS simulation for MVP
 
 ## 📝 Usage
 
 **Boutiques:** Connect → Select watch → Mint NFT  
 **Collectors:** Connect → View collection → Manage transfers
+
+## Suggested improvements (24/10/2025)
+- add model/ref in serial hash to ensure its unicity across brands
+- implement burn option to permanently disable NFT in case of theft
+- manual input of (part of) serial number when minting to secure matching between manufacturer data and physical data
+- override approve and setApprovalForAll (ERC721) to further prevent transactions outside the app
+- add timer for transaction timeout (although most transactions are expected to be done in real-time when the watch is physically changing hands)
+- handle dual status (shop/collector)
+- integrate with manufacturer system to implement real watches data (link via QR code provided with each watch)
+- move to mainnet
 
 ## 🌐 Configuration
 

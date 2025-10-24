@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, X, Clock, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 const PendingTransfers = () => {
   const { address } = useAccount();
@@ -17,15 +18,44 @@ const PendingTransfers = () => {
   // Get all transfers for the user
   const { data: userTokens, isLoading: tokensLoading } = useTransfersForUser(address);
 
-  // Component for each individual transfer
+  // State for IPFS metadata
+  const [ipfsMetadata, setIpfsMetadata] = useState({});
+
+  // Fetch IPFS metadata for a given URI
+  const fetchIPFSMetadata = async (uri) => {
+    if (!uri || ipfsMetadata[uri]) return;
+    
+    try {
+      const ipfsHash = uri.replace('ipfs://', '');
+      const gatewayUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+      
+      const response = await fetch(gatewayUrl);
+      if (!response.ok) throw new Error('Failed to fetch IPFS metadata');
+      
+      const metadata = await response.json();
+      setIpfsMetadata(prev => ({ ...prev, [uri]: metadata }));
+    } catch (error) {
+      console.error('Error fetching IPFS metadata:', error);
+      setIpfsMetadata(prev => ({ ...prev, [uri]: null }));
+    }
+  };
+
+  // Component for each individual transfer with full details
   const TransferCard = ({ tokenId }) => {
-    const { useHasPendingTransfer, usePendingTransfer } = useWatchfanContract();
+    const { useHasPendingTransfer, usePendingTransfer, useTokenMetadata } = useWatchfanContract();
     const { data: hasPending } = useHasPendingTransfer(tokenId);
     const { data: pendingData } = usePendingTransfer(tokenId);
+    const { data: contractData } = useTokenMetadata(tokenId);
+
+    // Fetch IPFS metadata when contract data is available
+    useEffect(() => {
+      if (contractData && contractData[0]) {
+        fetchIPFSMetadata(contractData[0]);
+      }
+    }, [contractData]);
 
     // Don't display if no pending transfer
     if (!hasPending || !pendingData) {
-      console.log(`❌ Token #${tokenId} - no pending transfer`);
       return null;
     }
 
@@ -33,18 +63,31 @@ const PendingTransfers = () => {
     
     // Only show if connected user is involved
     if (from !== address && to !== address) {
-      console.log(`❌ Token #${tokenId} - user not involved`);
       return null;
     }
 
     const isRecipient = to === address;
     const formatDate = (timestamp) => new Date(Number(timestamp) * 1000).toLocaleString();
+    
+    // Get contract metadata
+    let uri, purchaseDate, originalShop, serialHash;
+    if (contractData) {
+      [uri, purchaseDate, originalShop, serialHash] = contractData;
+    }
+    
+    const metadata = ipfsMetadata[uri];
+    const mintDate = purchaseDate ? new Date(Number(purchaseDate) * 1000).toLocaleDateString() : 'N/A';
 
     return (
       <Card>
         <CardHeader>
           <div className="flex justify-between items-start">
-            <CardTitle className="text-lg">NFT #{tokenId.toString()}</CardTitle>
+            <div>
+              <CardTitle className="text-lg">
+                {metadata?.name || `NFT #${tokenId.toString()}`}
+              </CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Token ID: {tokenId.toString()}</p>
+            </div>
             <Badge variant={isRecipient ? "default" : "secondary"}>
               {isRecipient ? "📥 Received" : "📤 Sent"}
             </Badge>
@@ -52,37 +95,96 @@ const PendingTransfers = () => {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-2 text-sm">
-            <div><strong>From:</strong> <span className="font-mono text-xs">{from}</span></div>
-            <div><strong>To:</strong> <span className="font-mono text-xs">{to}</span></div>
-            <div><strong>Requested on:</strong> {formatDate(timestamp)}</div>
+          {/* Watch Image */}
+          {metadata?.image && (
+            <div className="flex justify-center">
+              <img 
+                src={metadata.image.replace('ipfs://', 'https://ipfs.io/ipfs/')} 
+                alt={metadata.name}
+                className="max-w-full h-auto max-h-48 object-contain rounded"
+              />
+            </div>
+          )}
+
+          {/* Watch Details from IPFS */}
+          {metadata && (
+            <div className="bg-blue-50 p-3 rounded">
+              <h4 className="font-semibold mb-2 text-sm">Watch Details</h4>
+              {metadata.attributes?.map((attr, index) => (
+                <div key={index} className="text-xs">
+                  <strong>{attr.trait_type}:</strong> {attr.value}
+                </div>
+              ))}
+              {metadata.description && (
+                <p className="text-xs mt-2 text-gray-600 italic">{metadata.description}</p>
+              )}
+            </div>
+          )}
+
+          {/* Loading or Error State for Metadata */}
+          {!metadata && contractData && (
+            <div className="bg-gray-100 p-3 rounded">
+              <p className="text-xs text-gray-600 italic">
+                {ipfsMetadata[uri] === null 
+                  ? '⚠️ Unable to fetch IPFS metadata' 
+                  : '🔄 Loading watch details...'}
+              </p>
+            </div>
+          )}
+
+          {/* Transfer Details */}
+          <div className="border-t border-gray-200 pt-3">
+            <h4 className="font-semibold mb-2 text-sm">Transfer Details</h4>
+            <div className="grid grid-cols-1 gap-2 text-xs">
+              <div><strong>From:</strong> <span className="font-mono">{from}</span></div>
+              <div><strong>To:</strong> <span className="font-mono">{to}</span></div>
+              <div><strong>Requested on:</strong> {formatDate(timestamp)}</div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              {ownerApproved ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <Clock className="h-4 w-4 text-yellow-600" />
-              )}
-              <span className="text-sm">
-                Sender {ownerApproved ? 'has approved' : 'waiting for approval'}
-              </span>
+          {/* Blockchain Data */}
+          {contractData && (
+            <div className="border-t border-gray-200 pt-3">
+              <h4 className="font-semibold mb-2 text-sm">Blockchain Data</h4>
+              <div className="grid grid-cols-1 gap-2 text-xs">
+                <div><strong>Certification date:</strong> {mintDate}</div>
+                <div><strong>Original shop:</strong> <span className="font-mono">{originalShop?.slice(0, 6)}...{originalShop?.slice(-4)}</span></div>
+                <div><strong>Serial hash:</strong> <span className="font-mono break-all">{serialHash?.slice(0, 10)}...{serialHash?.slice(-8)}</span></div>
+                <div><strong>IPFS URI:</strong> <span className="font-mono break-all">{uri?.slice(0, 20)}...{uri?.slice(-10)}</span></div>
+              </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              {recipientApproved ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <Clock className="h-4 w-4 text-yellow-600" />
-              )}
-              <span className="text-sm">
-                Recipient {recipientApproved ? 'has approved' : 'waiting for approval'}
-              </span>
+          )}
+
+          {/* Approval Status */}
+          <div className="border-t border-gray-200 pt-3">
+            <h4 className="font-semibold mb-2 text-sm">Approval Status</h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                {ownerApproved ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                )}
+                <span className="text-xs">
+                  Sender {ownerApproved ? 'has approved' : 'waiting for approval'}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {recipientApproved ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                )}
+                <span className="text-xs">
+                  Recipient {recipientApproved ? 'has approved' : 'waiting for approval'}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-2">
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
             {isRecipient && !recipientApproved && (
               <Button 
                 onClick={() => handleApproveReceive(tokenId)}
@@ -104,6 +206,7 @@ const PendingTransfers = () => {
             </Button>
           </div>
 
+          {/* Status Messages */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -153,7 +256,7 @@ const PendingTransfers = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Pending Transfers</CardTitle>
+          <CardTitle>Pending Transfers ({userTokens.length})</CardTitle>
         </CardHeader>
       </Card>
 

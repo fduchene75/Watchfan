@@ -7,10 +7,15 @@ import Footer from "./Footer";
 
 const Layout = ({ children }) => {
   const pathname = usePathname();
-  const { type: userType, isConnected } = useUserType();
+  const { type: userType, isConnected, isLoading } = useUserType();
 
   // Determine background color based on user type
   const getBackgroundClass = () => {
+    // Show neutral background while loading
+    if (isLoading) {
+      return "bg-gray-200";
+    }
+    
     if (!isConnected) {
       return "bg-gray-200"; // Light gray for unconnected
     }
@@ -34,7 +39,7 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${getBackgroundClass()}`}>
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${getBackgroundClass()}`}>
       <Header />
       <main className="flex-grow p-5">
         {children}

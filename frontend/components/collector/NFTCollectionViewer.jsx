@@ -208,28 +208,13 @@ const NFTCollectionViewer = () => {
     );
   }
 
-  if (!userTokens || userTokens.length === 0) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>My Collection</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center py-8">
-            <p className="text-gray-600 mb-4">You don't have any certified watches yet.</p>
-            <p className="text-sm text-gray-500">Watches certified by authorized shops will appear here.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
+      {/* Header with Manage Transfers button - ALWAYS VISIBLE */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>My Collection ({userTokens.length} watch{userTokens.length > 1 ? 'es' : ''})</CardTitle>
+            <CardTitle>My Collection ({userTokens?.length || 0} watch{userTokens?.length > 1 ? 'es' : ''})</CardTitle>
             <Link href="/transfers">
               <Button variant="outline" size="sm">
                 <ArrowRightLeft className="h-4 w-4" />
@@ -240,9 +225,19 @@ const NFTCollectionViewer = () => {
         </CardHeader>
       </Card>
 
-      {userTokens.map((tokenId) => (
-        <NFTCard key={tokenId.toString()} tokenId={tokenId} />
-      ))}
+      {/* NFT List or Empty State */}
+      {!userTokens || userTokens.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-8">
+            <p className="text-gray-600 mb-4">You don't have any certified watches yet.</p>
+            <p className="text-sm text-gray-500">Watches certified by authorized shops will appear here.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        userTokens.map((tokenId) => (
+          <NFTCard key={tokenId.toString()} tokenId={tokenId} />
+        ))
+      )}
     </div>
   );
 };
