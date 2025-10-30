@@ -33,7 +33,7 @@ const WatchSelector = () => {
   const { mintWfNFT, isPending, isConfirming, isConfirmed, hash, error, useTotalSupply } = useWatchfanContract();
   const totalSupplyQuery = useTotalSupply();
   const totalSupply = totalSupplyQuery?.data;
-  const { mintNFT, resetMint, isProcessing, mintResult } = useMintService(mintWfNFT);
+  const { mintNFT, resetMint, isProcessing, mintResult, retryCount } = useMintService(mintWfNFT);
   const { checkSerialHash, resetValidation, isChecking, exists, error: validationError } = useSerialValidation();
   
   // Fetch minted NFTs - NEW: no parameter needed
@@ -91,6 +91,7 @@ const WatchSelector = () => {
 
   // Button text
   const getButtonText = () => {
+    if (isProcessing && retryCount > 0) return `Retrying (${retryCount}/3)...`;
     if (isProcessing) return 'Uploading to IPFS...';
     if (isPending) return 'Preparing transaction...';
     if (isConfirming) return 'Confirming...';
