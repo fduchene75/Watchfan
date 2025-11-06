@@ -179,8 +179,10 @@ export default function AdminDashboard() {
                     disabled={isPending || isConfirming}
                     className="border-red-500 text-red-600 hover:bg-red-50"
                   >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Revoke
+                    <>
+                      <XCircle className="mr-2 h-4 w-4" />
+                      <span>Revoke</span>
+                    </>
                   </Button>
                 </div>
               ))}

@@ -67,8 +67,10 @@ export default function TransfersPage() {
       <div className="mb-6">
         <Link href="/">
           <Button variant="outline">
-            <ArrowLeft className="h-4 w-4" />
-            Back to my collection
+            <>
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to my collection</span>
+            </>
           </Button>
         </Link>
       </div>

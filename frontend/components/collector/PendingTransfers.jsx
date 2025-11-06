@@ -201,8 +201,10 @@ const PendingTransfers = () => {
               disabled={isProcessing}
               className="flex-1"
             >
-              <X className="h-4 w-4" />
-              {isProcessing ? 'Processing...' : isRecipient ? 'Decline' : 'Cancel'}
+              <>
+                <X className="h-4 w-4" />
+                <span>{isProcessing ? 'Processing...' : isRecipient ? 'Cancel Request' : 'Cancel Transfer'}</span>
+              </>
             </Button>
           </div>
 

@@ -49,8 +49,10 @@ const RequestTransferDialog = ({ tokenId, disabled = false }) => {
           size="sm" 
           disabled={disabled}
         >
-          <Send className="h-4 w-4" />
-          Transfer
+          <>
+            <Send className="h-4 w-4" />
+            <span>Transfer</span>
+          </>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
