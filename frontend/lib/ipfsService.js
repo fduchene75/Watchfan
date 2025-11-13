@@ -1,51 +1,41 @@
-// Real IPFS implementation using Pinata API
+// IPFS Service - Secure implementation using Next.js API routes
+// API keys are kept secure on the server side
 
-import axios from 'axios';
-
-const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
 const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'https://gateway.pinata.cloud';
 
 // ============================================
-// Upload image file to IPFS via Pinata
+// Upload image file to IPFS via API route
 // ============================================
 export const uploadImageToIPFS = async (file) => {
   try {
-    console.log("📤 Uploading image to IPFS via Pinata...");
+    console.log("📤 Uploading image to IPFS via API route...");
     
     const formData = new FormData();
     formData.append('file', file);
 
-    const metadata = JSON.stringify({
-      name: file.name,
-      keyvalues: { type: 'watch-image' }
+    const response = await fetch('/api/upload-image', {
+      method: 'POST',
+      body: formData
     });
-    formData.append('pinataMetadata', metadata);
 
-    const options = JSON.stringify({ cidVersion: 1 });
-    formData.append('pinataOptions', options);
+    const data = await response.json();
 
-    const response = await axios.post(
-      'https://api.pinata.cloud/pinning/pinFileToIPFS',
-      formData,
-      {
-        headers: {
-          'Authorization': `Bearer ${PINATA_JWT}`
-        }
-      }
-    );
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Upload failed');
+    }
 
-    console.log("✅ Image uploaded successfully:", response.data.IpfsHash);
+    console.log("✅ Image uploaded successfully:", data.ipfsHash);
 
     return {
       success: true,
-      ipfsHash: response.data.IpfsHash,
-      ipfsUrl: `${PINATA_GATEWAY}/ipfs/${response.data.IpfsHash}`
+      ipfsHash: data.ipfsHash,
+      ipfsUrl: data.ipfsUrl
     };
   } catch (error) {
     console.error("❌ Failed to upload image:", error);
     return {
       success: false,
-      error: error.response?.data?.message || error.message
+      error: error.message
     };
   }
 };
@@ -66,7 +56,7 @@ export const fetchImageAsFile = async (imagePath) => {
 };
 
 // ============================================
-// Upload metadata JSON to IPFS via Pinata
+// Upload metadata JSON to IPFS via API route
 // This now handles the image upload automatically
 // ============================================
 export const uploadMetadataToIPFS = async (metadata, watchData) => {
@@ -93,33 +83,37 @@ export const uploadMetadataToIPFS = async (metadata, watchData) => {
     enrichedMetadata.uploaded_at = new Date().toISOString();
     enrichedMetadata.serial_hash = watchData.serialHash;
     
-    // 3. Upload metadata JSON to Pinata
+    // 3. Upload metadata JSON via API route
     console.log("📤 Uploading metadata JSON to IPFS...");
-    const response = await axios.post(
-      'https://api.pinata.cloud/pinning/pinJSONToIPFS',
-      enrichedMetadata,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${PINATA_JWT}`
-        }
-      }
-    );
+    
+    const response = await fetch('/api/upload-metadata', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(enrichedMetadata)
+    });
 
-    console.log("✅ Metadata uploaded successfully:", response.data.IpfsHash);
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Metadata upload failed');
+    }
+
+    console.log("✅ Metadata uploaded successfully:", data.ipfsHash);
 
     return {
       success: true,
-      ipfsHash: response.data.IpfsHash,
-      ipfsUri: `ipfs://${response.data.IpfsHash}`,
-      pinataUrl: `${PINATA_GATEWAY}/ipfs/${response.data.IpfsHash}`
+      ipfsHash: data.ipfsHash,
+      ipfsUri: data.ipfsUri,
+      pinataUrl: data.pinataUrl
     };
     
   } catch (error) {
     console.error("❌ Failed to upload metadata:", error);
     return {
       success: false,
-      error: error.response?.data?.message || error.message
+      error: error.message
     };
   }
 };
@@ -134,13 +128,19 @@ export const getMetadataFromIPFS = async (ipfsHash) => {
     // Remove ipfs:// prefix if present
     const hash = ipfsHash.replace('ipfs://', '');
     
-    const response = await axios.get(`${PINATA_GATEWAY}/ipfs/${hash}`);
+    const response = await fetch(`${PINATA_GATEWAY}/ipfs/${hash}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const metadata = await response.json();
     
     console.log("✅ Metadata retrieved successfully");
     
     return {
       success: true,
-      metadata: response.data
+      metadata
     };
   } catch (error) {
     console.error("❌ Failed to get metadata:", error);
@@ -152,25 +152,34 @@ export const getMetadataFromIPFS = async (ipfsHash) => {
 };
 
 // ============================================
-// Test Pinata connection
+// Test Pinata connection (via API route)
 // ============================================
 export const testPinataConnection = async () => {
   try {
-    console.log("🔌 Testing Pinata connection...");
+    console.log("🔌 Testing Pinata connection via API route...");
     
-    const response = await axios.get(
-      'https://api.pinata.cloud/data/testAuthentication',
-      {
-        headers: {
-          'Authorization': `Bearer ${PINATA_JWT}`
-        }
-      }
-    );
+    // Test by uploading a minimal JSON
+    const testData = { test: true, timestamp: Date.now() };
     
-    console.log("✅ Pinata connection successful:", response.data);
-    return true;
+    const response = await fetch('/api/upload-metadata', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: 'connection-test', ...testData })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      console.log("✅ Pinata connection successful");
+      return true;
+    }
+    
+    console.error("❌ Pinata connection failed:", data.error);
+    return false;
   } catch (error) {
-    console.error("❌ Pinata connection failed:", error);
+    console.error("❌ Pinata connection test failed:", error);
     return false;
   }
 };
