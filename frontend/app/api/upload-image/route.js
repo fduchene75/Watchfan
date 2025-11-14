@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { PinataSDK } from 'pinata-web3';
 
 const pinata = new PinataSDK({
-  pinataJwt: process.env.PINATA_JWT!,
+  pinataJwt: process.env.PINATA_JWT,
   pinataGateway: process.env.PINATA_GATEWAY
 });
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file');
     
     if (!file) {
       return NextResponse.json(
